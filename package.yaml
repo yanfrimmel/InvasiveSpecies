@@ -27,7 +27,6 @@ dependencies:
 - rio
 - sdl2
 - sdl2-image
-- text
 - lens
 - monad-loops
 name: InvasiveSpecies

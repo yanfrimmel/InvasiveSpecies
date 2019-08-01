@@ -5,7 +5,7 @@
 module Main (main) where
 
 import qualified SDL
-import qualified Util
+import qualified SDLUtils
 import RIO
 import Control.Monad.Loops    (iterateUntilM)
 import Data.Foldable          (foldl')
@@ -63,25 +63,24 @@ initialPanes = PaneMap
   , bottomRight = Out
   }
 
-
 main :: IO ()
-main = Util.withSDL $ Util.withSDLImage $ do
-  Util.setHintQuality
-  Util.withWindow "Lesson 17" (640, 480) $ \w ->
-    Util.withRenderer w $ \r -> do
-      t <- Util.loadTextureWithInfo r "./assets/mouse_states.png"
+main = SDLUtils.withSDL $ SDLUtils.withSDLImage $ do
+  SDLUtils.setHintQuality
+  SDLUtils.withWindow "InvasiveSpecies" (800, 600) $ \world ->
+    SDLUtils.withRenderer world $ \renderer -> do
+      textureAndInfo <- SDLUtils.loadTextureWithInfo renderer "./assets/mouse_states.png"
 
-      let doRender = renderWorld r t
+      let doRender = renderWorld renderer textureAndInfo
 
       _ <- iterateUntilM
         exiting
-        (\x ->
-          updateWorld x <$> SDL.pollEvents
-          >>= \x' -> x' <$ doRender x'
+        (\currentWorld ->
+          updateWorld currentWorld <$> SDL.pollEvents
+          >>= \currentWorld' -> currentWorld' <$ doRender currentWorld'
         )
         initialWorld
 
-      SDL.destroyTexture (fst t)
+      SDL.destroyTexture (fst textureAndInfo)
 
 
 updateWorld :: World -> [SDL.Event] -> World
@@ -208,7 +207,7 @@ drawWorld r (t, ti) w = do
       tw = fromIntegral $ SDL.textureWidth ti
       th = fromIntegral $ SDL.textureHeight ti
 
-      s = Util.mkRect 0 0 (tw / 2) (th / 2)
+      s = SDLUtils.mkRect 0 0 (tw / 2) (th / 2)
 
       mFor c = s `moveTo` getMask c
       pFor c = s `moveTo` getPosition c
@@ -234,4 +233,4 @@ getPosition BottomRight = (320, 240)
 
 
 moveTo :: SDL.Rectangle a -> (a, a) -> SDL.Rectangle a
-moveTo (SDL.Rectangle _ d) (x, y) = SDL.Rectangle (Util.mkPoint x y) d
+moveTo (SDL.Rectangle _ d) (x, y) = SDL.Rectangle (SDLUtils.mkPoint x y) d

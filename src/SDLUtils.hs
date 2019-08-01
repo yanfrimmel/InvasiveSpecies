@@ -1,12 +1,12 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Util where
+module SDLUtils where
 
 import RIO
+import RIO.Text()
 import qualified SDL
 import qualified SDL.Image
 import Control.Monad          (void)
-import Control.Monad.IO.Class (MonadIO)
-import Data.Text              (Text)
+import Control.Monad.IO.Class (MonadIO)            
 import SDL (($=))
 
 
