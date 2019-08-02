@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module SDLUtils where
 
-import RIO
+import Import
 import RIO.Text()
 import qualified SDL
 import qualified SDL.Image

@@ -1,19 +1,22 @@
-library:
-  source-dirs: src
-tests:
-  InvasiveSpecies-test:
-    source-dirs: test
-    main: Spec.hs
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - tasty-hspec
-    - hspec
-    - InvasiveSpecies
+name: InvasiveSpecies
+version: 0.1.0.0
+github: yanfrimmel/InvasiveSpecies
+license: BSD3
+author: Yan Frimmel
 copyright: 2019 Yan Frimmel
 maintainer: yan.frimmel1411@gmail.com
+extra-source-files:
+- README.md
+description: Please see the README on Github at <https://github.com/githubuser/InvasiveSpecies#readme>
+
+dependencies:
+- base >= 4.11 && < 10
+- rio
+- sdl2
+- sdl2-image
+- lens
+- monad-loops
+
 ghc-options:
 - -Wall
 - -Wcompat
@@ -22,29 +25,34 @@ ghc-options:
 - -Wincomplete-uni-patterns
 - -Wpartial-fields
 - -Wredundant-constraints
-dependencies:
-- base >= 4.11 && < 10
-- rio
-- sdl2
-- sdl2-image
-- lens
-- monad-loops
-name: InvasiveSpecies
-version: 0.1.0.0
-extra-source-files:
-- README.md
-author: Yan Frimmel
-github: githubuser/InvasiveSpecies
-license: BSD3
+
+
+library:
+  source-dirs: src
+
 executables:
   InvasiveSpecies-exe:
     source-dirs: app
     main: Main.hs
+    dependencies:
+    - InvasiveSpecies
+    - optparse-simple
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    
+tests:
+  InvasiveSpecies-test:
+    source-dirs: test
+    main: Spec.hs
     dependencies:
+    - tasty-hspec
+    - hspec
     - InvasiveSpecies
-    - optparse-simple
-description: Please see the README on Github at <https://github.com/githubuser/InvasiveSpecies#readme>
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N   
+
+
