@@ -23,12 +23,12 @@ main = do
                   )
     )
     empty
-  lo <- logOptionsHandle stderr (optionsVerbose options)
-  pc <- mkDefaultProcessContext
-  withLogFunc lo $ \lf ->
+  logOptions <- logOptionsHandle stderr (optionsVerbose options)
+  proceseContexts <- mkDefaultProcessContext
+  withLogFunc logOptions $ \logFucntion ->
     let app = App
-          { appLogFunc = lf
-          , appProcessContext = pc
+          { appLogFunc = logFucntion
+          , appProcessContext = proceseContexts
           , appOptions = options
           }
       in runRIO app run

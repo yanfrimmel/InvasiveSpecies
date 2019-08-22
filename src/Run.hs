@@ -52,36 +52,36 @@ applyIntent Idle        = idleWorld
 applyIntent Quit        = quitWorld
 
 
-updatePaneMap
-    :: (Pane -> Pane) -> (Pane -> Pane) -> Quadrant -> PaneMap -> PaneMap
-updatePaneMap f g TopLeft (PaneMap tl tr bl br) =
-    PaneMap (f tl) (g tr) (g bl) (g br)
-updatePaneMap f g TopRight (PaneMap tl tr bl br) =
-    PaneMap (g tl) (f tr) (g bl) (g br)
-updatePaneMap f g BottomLeft (PaneMap tl tr bl br) =
-    PaneMap (g tl) (g tr) (f bl) (g br)
-updatePaneMap f g BottomRight (PaneMap tl tr bl br) =
-    PaneMap (g tl) (g tr) (g bl) (f br)
+updateTile
+    :: (Pane -> Pane) -> (Pane -> Pane) -> Quadrant -> Tile -> Tile
+updateTile f g TopLeft (Tile tl tr bl br) =
+    Tile (f tl) (g tr) (g bl) (g br)
+updateTile f g TopRight (Tile tl tr bl br) =
+    Tile (g tl) (f tr) (g bl) (g br)
+updateTile f g BottomLeft (Tile tl tr bl br) =
+    Tile (g tl) (g tr) (f bl) (g br)
+updateTile f g BottomRight (Tile tl tr bl br) =
+    Tile (g tl) (g tr) (g bl) (f br)
 
 
 pressWorld :: Quadrant -> World -> World
-pressWorld q w = w { panes = panes' }
-    where panes' = updatePaneMap setDown id q (panes w)
+pressWorld q w = w { tiles = tiles' }
+    where tiles' = updateTile setDown id q (tiles w)
 
 
 releaseWorld :: Quadrant -> World -> World
-releaseWorld q w = w { panes = panes' }
-    where panes' = updatePaneMap setUp id q (panes w)
+releaseWorld q w = w { tiles = tiles' }
+    where tiles' = updateTile setUp id q (tiles w)
 
 
 hoverWorld :: Quadrant -> World -> World
-hoverWorld q w = w { panes = panes' }
-    where panes' = updatePaneMap setOver setOut q (panes w)
+hoverWorld q w = w { tiles = tiles' }
+    where tiles' = updateTile setOver setOut q (tiles w)
 
 
 leaveWorld :: Quadrant -> World -> World
-leaveWorld q w = w { panes = panes' }
-    where panes' = updatePaneMap setOut setOver q (panes w)
+leaveWorld q w = w { tiles = tiles' }
+    where tiles' = updateTile setOut setOver q (tiles w)
 
 
 setOut :: Pane -> Pane
@@ -120,23 +120,23 @@ renderWorld r t w = do
 
 
 drawWorld :: SDL.Renderer -> (SDL.Texture, SDL.TextureInfo) -> World -> IO ()
-drawWorld r (t, ti) w = do
-    renderPane (topLeft $ panes w)     TopLeft
-    renderPane (topRight $ panes w)    TopRight
-    renderPane (bottomLeft $ panes w)  BottomLeft
-    renderPane (bottomRight $ panes w) BottomRight
+drawWorld renderer (texture, textureInfo) world = do
+    renderPane (topLeft $ tiles world)     TopLeft
+    renderPane (topRight $ tiles world)    TopRight
+    renderPane (bottomLeft $ tiles world)  BottomLeft
+    renderPane (bottomRight $ tiles world) BottomRight
   where
-    tw :: Double
-    tw = fromIntegral $ SDL.textureWidth ti
-    th = fromIntegral $ SDL.textureHeight ti
+    textureWidth :: Double
+    textureWidth = fromIntegral $ SDL.textureWidth textureInfo
+    textureHeight = fromIntegral $ SDL.textureHeight textureInfo
 
-    s  = SDLUtils.mkRect 0 0 (tw / 2) (th / 2)
+    s  = SDLUtils.mkRect 0 0 (textureWidth / 2) (textureHeight / 2)
 
     mFor c = s `moveTo` getMask c
     pFor c = s `moveTo` getPosition c
 
-    renderPane p q =
-        SDL.copy r t (Just $ floor <$> mFor p) (Just $ floor <$> pFor q)
+    renderPane pane quadrant =
+        SDL.copy renderer texture (Just $ floor <$> mFor pane) (Just $ floor <$> pFor quadrant)
 
 
 getMask :: (Num a) => Pane -> (a, a)
@@ -157,10 +157,10 @@ moveTo :: SDL.Rectangle a -> (a, a) -> SDL.Rectangle a
 moveTo (SDL.Rectangle _ d) (x, y) = SDL.Rectangle (SDLUtils.mkPoint x y) d
 
 initialWorld :: World
-initialWorld = World { exiting = False, panes = initialPanes }
+initialWorld = World { exiting = False, tiles = initialtiles }
 
-initialPanes :: PaneMap
-initialPanes = PaneMap { topLeft     = Out
+initialtiles :: Tile
+initialtiles = Tile { topLeft     = Out
                        , topRight    = Out
                        , bottomLeft  = Out
                        , bottomRight = Out
@@ -181,12 +181,12 @@ motionIntent e = Hover q
   where
     q                    = selectQuadrant x y
     (SDL.P (SDL.V2 x y)) = SDL.mouseMotionEventPos e
-    
+
 -- | SDL.mouseButtonEventMotion e == SDL.Pressed -> Down
 --
 buttonIntent :: SDL.MouseButtonEventData -> Intent
-buttonIntent e = t q
+buttonIntent e = getIntentFromQuadrant quadrant
   where
-    q = selectQuadrant x y
+    quadrant = selectQuadrant x y
     (SDL.P (SDL.V2 x y)) = SDL.mouseButtonEventPos e
-    t = if SDL.mouseButtonEventMotion e == SDL.Pressed then Press else Release
+    getIntentFromQuadrant = if SDL.mouseButtonEventMotion e == SDL.Pressed then Press else Release

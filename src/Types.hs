@@ -1,8 +1,10 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Types where
 
-import RIO
-import RIO.Process
+import           RIO
+import           RIO.Process
+import           Control.Lens
 
 -- | Command line arguments
 data Options = Options
@@ -17,9 +19,10 @@ data App = App
   }
 
 instance HasLogFunc App where
-  logFuncL = lens appLogFunc (\x y -> x { appLogFunc = y })
+  logFuncL = RIO.lens appLogFunc (\x y -> x { appLogFunc = y })
 instance HasProcessContext App where
-  processContextL = lens appProcessContext (\x y -> x { appProcessContext = y })
+  processContextL =
+    RIO.lens appProcessContext (\x y -> x { appProcessContext = y })
 
 data Intent
   = Idle
@@ -32,10 +35,10 @@ data Intent
 
 data World = World
   { exiting :: Bool
-  , panes   :: PaneMap
+  , tiles   :: Tile
   }
 
-data PaneMap = PaneMap
+data Tile = Tile
   { topLeft     :: Pane
   , topRight    :: Pane
   , bottomLeft  :: Pane
@@ -52,4 +55,39 @@ data Quadrant
   = TopLeft
   | TopRight
   | BottomLeft
-  | BottomRight  
+  | BottomRight
+
+data UnitBase = UnitBase
+  { _name :: String
+  , _condition   :: Int
+  , _position :: WorldPoint
+  } deriving (Show)
+
+data Animal = Animal
+  { _unitBase :: UnitBase
+  , _gender :: Gender
+  , _diet :: Diet
+  } deriving (Show)
+
+data Gender
+  = Male
+  | Female
+  deriving (Show)
+
+data Diet
+  = Carnivore
+  | Omnivore
+  | Herbivore
+  deriving (Show)
+  -- animal-vegetable-mineral  
+
+data WorldPoint = WorldPoint
+  { _xWorld :: Int
+  , _yWorld :: Int
+  } deriving (Show)
+
+makeLenses ''UnitBase
+makeLenses ''Animal
+makeLenses ''Gender
+makeLenses ''Diet
+makeLenses ''WorldPoint
