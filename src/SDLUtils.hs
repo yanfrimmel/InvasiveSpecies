@@ -1,21 +1,21 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 module SDLUtils where
 
-import Import
-import RIO.Text()
-import qualified SDL
+import           Reflex.SDL2
 import qualified SDL.Image
-import Control.Monad          (void)
-import Control.Monad.IO.Class (MonadIO)            
-import SDL (($=))
+import           Control.Monad          (void)
+import           Control.Monad.IO.Class (MonadIO) 
+import           Foreign.C.Types
+import           Data.Text
 
+data SDLTexture = SDLTexture { getSDLTexture :: Texture
+                       , sizeT         :: V2 CInt
+                       }
 
 withSDL :: (MonadIO m) => m a -> m ()
 withSDL op = do
-  SDL.initialize []
+  initializeAll
   void op
-  SDL.quit
-
+  quit
 
 withSDLImage :: (MonadIO m) => m a -> m ()
 withSDLImage op = do
@@ -23,70 +23,55 @@ withSDLImage op = do
   void op
   SDL.Image.quit
 
-
-withWindow :: (MonadIO m) => Text -> (Int, Int) -> (SDL.Window -> m a) -> m ()
-withWindow title (x, y) op = do
-  w <- SDL.createWindow title p
-  SDL.showWindow w
+withWindow :: (MonadIO m) => Text -> (Int, Int) -> (Window -> m a) -> m ()
+withWindow title (x, y) op = do      
+  w <- createWindow title cfg
+  showWindow w
+  void $ glCreateContext w
   void $ op w
-  SDL.destroyWindow w
-
+  destroyWindow w
     where
-      p = SDL.defaultWindow { SDL.windowInitialSize = z }
-      z = SDL.V2 (fromIntegral x) (fromIntegral y)
+      size = V2 (fromIntegral x) (fromIntegral y)
+      ogl = defaultOpenGL{ glProfile = Core Debug 3 3 }
+      cfg = defaultWindow{ windowOpenGL      = Just ogl
+                          , windowResizable   = False
+                          , windowHighDPI     = False
+                          , windowInitialSize = size
+                          }
 
-
-withRenderer :: (MonadIO m) => SDL.Window -> (SDL.Renderer -> m a) -> m ()
+withRenderer :: (MonadIO m) => Window -> (Renderer -> m a) -> m ()
 withRenderer w op = do
-  r <- SDL.createRenderer w (-1) rendererConfig
+  r <- createRenderer w (-1) defaultRenderer
+  rendererDrawBlendMode r $= BlendAlphaBlend
   void $ op r
-  SDL.destroyRenderer r
+  destroyRenderer r  
 
+loadTexture :: Renderer -> FilePath -> IO SDLTexture
+loadTexture r filePath = do
+  surface <- SDL.Image.load filePath
+  size <- surfaceDimensions surface
+  let key = V4 0 maxBound maxBound maxBound
+  surfaceColorKey surface $= Just key
+  t <- createTextureFromSurface r surface
+  freeSurface surface
+  return $ SDLTexture t size              
 
-rendererConfig :: SDL.RendererConfig
-rendererConfig = SDL.RendererConfig
-  { SDL.rendererType = SDL.AcceleratedVSyncRenderer
-  , SDL.rendererTargetTexture = False
-  }
-
-
-renderSurfaceToWindow :: (MonadIO m) => SDL.Window -> SDL.Surface -> SDL.Surface -> m ()
+renderSurfaceToWindow :: (MonadIO m) => Window -> Surface -> Surface -> m ()
 renderSurfaceToWindow w s i
-  = SDL.surfaceBlit i Nothing s Nothing
-  >> SDL.updateWindowSurface w
+  = surfaceBlit i Nothing s Nothing
+  >> updateWindowSurface w
 
-
-isContinue :: Maybe SDL.Event -> Bool
-isContinue = maybe True (not . isQuitEvent)
-
-
-conditionallyRun :: (Monad m) => m a -> Bool -> m Bool
-conditionallyRun f True = True <$ f
-conditionallyRun _ False = pure False
-
-
-isQuitEvent :: SDL.Event -> Bool
-isQuitEvent (SDL.Event _t SDL.QuitEvent) = True
-isQuitEvent _ = False
-
-
-setHintQuality :: (MonadIO m) => m ()
-setHintQuality = SDL.HintRenderScaleQuality $= SDL.ScaleNearest
-
-
-loadTextureWithInfo :: (MonadIO m) => SDL.Renderer -> FilePath -> m (SDL.Texture, SDL.TextureInfo)
+loadTextureWithInfo :: (MonadIO m) => Renderer -> FilePath -> m (Texture, TextureInfo)
 loadTextureWithInfo r p = do
   t <- SDL.Image.loadTexture r p
-  i <- SDL.queryTexture t
+  i <- queryTexture t
   pure (t, i)
 
+mkPoint :: a -> a -> Point V2 a
+mkPoint x y = P (V2 x y)
 
-mkPoint :: a -> a -> SDL.Point SDL.V2 a
-mkPoint x y = SDL.P (SDL.V2 x y)
-
-
-mkRect :: a -> a -> a -> a-> SDL.Rectangle a
-mkRect x y w h = SDL.Rectangle o z
+mkRect :: a -> a -> a -> a-> Rectangle a
+mkRect x y w h = Rectangle o z
   where
-    o = SDL.P (SDL.V2 x y)
-    z = SDL.V2 w h
+    o = P (V2 x y)
+    z = V2 w h  
