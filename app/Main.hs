@@ -37,14 +37,14 @@ renderAABB r color pos = do
   fillRect r $ Just $ Rectangle (P $ fromIntegral <$> pos - 10) 20
 
 guest
-  :: (ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader Renderer m)
+  :: (ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m)
   => m ()
 guest = do
   evPB <- getPostBuild
   performEvent_ $ ffor evPB $ \() ->
     liftIO $ putStrLn "starting up..."
 
-  r <- ask
+  (r, t) <- ask
   evDelay <- getAsyncEvent $ threadDelay 3000000
   dDelay  <- holdDyn False $ True <$ evDelay
   commitLayers $ ffor dDelay $ \case
@@ -59,39 +59,10 @@ guest = do
       present r  
       liftIO $ putStrLn "True"
 
-  -- let performDeltaSecondTimer n = do
-  --       evDelta  <- performEventDelta =<< tickLossyFromPostBuildTime n
-  --       dTicks   <- foldDyn (+) 0 $ (1 :: Int) <$ evDelta
-  --       dDelta   <- holdDyn 0 evDelta
-  --       dElapsed <- foldDyn (+) 0 evDelta
-  --       flip putDebugLnE id $ updated $ do
-  --         tickz <- dTicks
-  --         lapse <- dElapsed
-  --         delta <- dDelta
-  --         return $ unwords [ show n
-  --                          , "timer -"
-  --                          , show tickz
-  --                          , "ticks -"
-  --                          , show lapse
-  --                          , "lapsed -"
-  --                          , show delta
-  --                          , "delta since last tick"
-  --                          ]
-  -- performDeltaSecondTimer 1
-  -- evMouseMove <- getMouseMotionEvent
-  -- dMoves      <- foldDyn (\x xs -> take 100 $ x : xs) [] evMouseMove
-  -- commitLayer $ ffor dMoves $ \moves ->
-  --   forM_ (reverse moves) $ \dat -> do
-  --     let P pos = fromIntegral <$> mouseMotionEventPos dat
-  --         color = if null (mouseMotionEventState dat)
-  --                 then V4 255 255 0   128
-  --                 else V4 0   255 255 128
-  --     renderAABB r color pos    
-
-app :: (ReflexSDL2 t m, MonadReader Renderer m) => m ()
+app :: (ReflexSDL2 t m, MonadReader (Renderer, Textures) m) => m ()
 app = do
   (_, dynLayers) <- runDynamicWriterT guest
-  r <- ask
+  (r, t) <- ask
   performEvent_ $ ffor (updated dynLayers) $ \layers -> do
     rendererDrawColor r $= V4 128 0 0 255
     clear r
@@ -106,4 +77,5 @@ main = do
  withSDL $ withSDLImage $
   withWindow "InvasiveSpecies" (800, 600) $ \world -> 
    withRenderer world $ \renderer ->
-    host $ runReaderT app renderer
+    withTextures renderer $ \(renderer, textures) ->
+      host $ runReaderT app $ (renderer, textures)

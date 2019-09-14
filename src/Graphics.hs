@@ -2,14 +2,14 @@ module Graphics where
 
 import           Reflex.SDL2
 import qualified SDL.Image
-import           Control.Monad          (void)
+import           Control.Monad          (void, forM_)
 import           Control.Monad.IO.Class (MonadIO) 
 import           Foreign.C.Types
 import           Data.Text
 
 data TilesInScreen = TilesInScreen {
   _horizontalTilesNumber :: !Int,
-  _verticalTilesNumber :: !Int,
+  _verticalTilesNumber :: !Int
 }
 
 data SDLTexture = SDLTexture { getSDLTexture :: Texture
@@ -32,6 +32,45 @@ loadTextures r =
     <*> loadTexture r "assets/grass.png"
     <*> loadTexture r "assets/stones.png"
 
+loadTexture :: Renderer -> FilePath -> IO SDLTexture
+loadTexture r filePath = do
+  surface <- SDL.Image.load filePath
+  size <- surfaceDimensions surface
+  let key = V4 0 maxBound maxBound maxBound
+  surfaceColorKey surface $= Just key
+  t <- createTextureFromSurface r surface
+  freeSurface surface
+  return $ SDLTexture t size
+
+renderTexture :: Renderer -> SDLTexture -> Point V2 CInt -> IO ()
+renderTexture r (SDLTexture t size) xy =
+  Reflex.SDL2.copy r t Nothing (Just $ Rectangle xy size)
+
+renderTextureRotated :: Renderer -> SDLTexture -> Point V2 CInt -> CDouble -> IO ()
+renderTextureRotated r (SDLTexture t size) xy ang =
+  copyEx r t Nothing (Just $ Rectangle xy size) ang Nothing (V2 False False)
+
+renderRepeatedTexture :: Renderer -> SDLTexture -> CInt -> CInt -> IO ()
+renderRepeatedTexture r t@(SDLTexture _ (V2 width height)) ox oy = do
+  renderTexture r t (P (V2 offset (oy - height)))
+  renderTexture r t (P (V2 (offset + width) (oy - height)))
+  where
+    offset = ox - (ox `div` width) * width - width
+
+renderRepeatedTextureY :: Renderer -> SDLTexture -> CInt -> [CInt] -> IO ()
+renderRepeatedTextureY r t ox xs =
+  forM_ xs $ \oy ->
+    renderTexture r t (P (V2 ox oy))
+    
+destroyTextures :: Textures -> IO ()
+destroyTextures ts = do
+  destroyTexture $ getSDLTexture $ _humanM ts
+  destroyTexture $ getSDLTexture $ _humanF ts
+  destroyTexture $ getSDLTexture $ _soil ts
+  destroyTexture $ getSDLTexture $ _grass ts
+  destroyTexture $ getSDLTexture $ _stones ts
+
+    
 withSDL :: (MonadIO m) => m a -> m ()
 withSDL op = do
   initializeAll
@@ -65,17 +104,13 @@ withRenderer w op = do
   r <- createRenderer w (-1) defaultRenderer
   rendererDrawBlendMode r $= BlendAlphaBlend
   void $ op r
-  destroyRenderer r  
+  destroyRenderer r    
 
-loadTexture :: Renderer -> FilePath -> IO SDLTexture
-loadTexture r filePath = do
-  surface <- SDL.Image.load filePath
-  size <- surfaceDimensions surface
-  let key = V4 0 maxBound maxBound maxBound
-  surfaceColorKey surface $= Just key
-  t <- createTextureFromSurface r surface
-  freeSurface surface
-  return $ SDLTexture t size              
+withTextures :: (MonadIO m) => Renderer -> ((Renderer, Textures) -> m a) -> m ()
+withTextures r op = do
+    t <- liftIO $ loadTextures r
+    void $ op (r, t)
+    liftIO $ destroyTextures t      
 
 renderSurfaceToWindow :: (MonadIO m) => Window -> Surface -> Surface -> m ()
 renderSurfaceToWindow w s i
