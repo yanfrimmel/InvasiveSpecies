@@ -1,4 +1,4 @@
-module SDLUtils where
+module Graphics where
 
 import           Reflex.SDL2
 import qualified SDL.Image
@@ -7,9 +7,30 @@ import           Control.Monad.IO.Class (MonadIO)
 import           Foreign.C.Types
 import           Data.Text
 
+data TilesInScreen = TilesInScreen {
+  _horizontalTilesNumber :: !Int,
+  _verticalTilesNumber :: !Int,
+}
+
 data SDLTexture = SDLTexture { getSDLTexture :: Texture
                        , sizeT         :: V2 CInt
                        }
+
+data Textures = Textures { _humanM    :: !SDLTexture
+, _humanF    :: !SDLTexture
+, _soil    :: !SDLTexture
+, _grass    :: !SDLTexture
+, _stones     :: !SDLTexture
+}
+
+loadTextures :: Renderer -> IO Textures
+loadTextures r =
+  Textures
+    <$> loadTexture r "assets/human_male.png"
+    <*> loadTexture r "assets/human_female.png"
+    <*> loadTexture r "assets/soil.png"
+    <*> loadTexture r "assets/grass.png"
+    <*> loadTexture r "assets/stones.png"
 
 withSDL :: (MonadIO m) => m a -> m ()
 withSDL op = do
@@ -74,4 +95,5 @@ mkRect :: a -> a -> a -> a-> Rectangle a
 mkRect x y w h = Rectangle o z
   where
     o = P (V2 x y)
-    z = V2 w h  
+    z = V2 w h
+
