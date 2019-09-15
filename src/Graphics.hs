@@ -7,6 +7,10 @@ import           Control.Monad.IO.Class (MonadIO)
 import           Foreign.C.Types
 import           Data.Text
 
+screenDimensions :: V2 CInt 
+screenDimensions = V2 800 600
+
+
 data TilesInScreen = TilesInScreen {
   _horizontalTilesNumber :: !Int,
   _verticalTilesNumber :: !Int
@@ -21,16 +25,19 @@ data Textures = Textures { _humanM    :: !SDLTexture
 , _soil    :: !SDLTexture
 , _grass    :: !SDLTexture
 , _stones     :: !SDLTexture
+, _gridTexture :: !SDLTexture
 }
 
 loadTextures :: Renderer -> IO Textures
-loadTextures r =
+loadTextures r = do
+  t <- createTexture r RGBA8888 TextureAccessTarget screenDimensions
   Textures
     <$> loadTexture r "assets/human_male.png"
     <*> loadTexture r "assets/human_female.png"
     <*> loadTexture r "assets/soil.png"
     <*> loadTexture r "assets/grass.png"
     <*> loadTexture r "assets/stones.png"
+    <*> (return $ SDLTexture t screenDimensions)   
 
 loadTexture :: Renderer -> FilePath -> IO SDLTexture
 loadTexture r filePath = do
@@ -131,4 +138,29 @@ mkRect x y w h = Rectangle o z
   where
     o = P (V2 x y)
     z = V2 w h
+
+-- drawGrid :: (MonadIO m) => Renderer -> m ()
+-- drawGrid renderer = do
+  
+--   rendererRenderTarget renderer $= t 
+
+-- void gridDraw() {
+--   // Render all tiles
+--   if(isEntireGridIsDrawn) return;
+  
+--   SDL_SetRenderTarget(renderer, gridTexture);
+--   printf("gridRender%d, %d\n", GRID_WIDTH, GRID_HEIGHT);
+--   for(int i = 0; i < GRID_WIDTH; ++i) {
+--       for(int j = 0; j < GRID_HEIGHT; ++j) {
+--           gridDrawTile(&(grid->tiles[i][j]));
+--       }
+--   }
+--   SDL_SetRenderTarget(renderer, NULL);
+--   isEntireGridIsDrawn = true;
+-- }
+  
+-- void gridDrawTile(Tile *tile) {
+--     RectAndTexture* RectAndTexture = &tile->RectAndTexture;
+--     SDL_RenderCopy(renderer, RectAndTexture->texture, NULL, &RectAndTexture->rect);
+-- }    
 
