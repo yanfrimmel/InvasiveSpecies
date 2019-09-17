@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE BlockArguments        #-}
 
 module Main where
 
@@ -15,6 +16,7 @@ import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Reflex
 import Reflex.SDL2
 import Graphics
+import Foreign.C.Types
 
 -- | A type representing one layer in our app.
 type Layer m = Performable m ()
@@ -43,31 +45,40 @@ guest = do
   evPB <- getPostBuild
   performEvent_ $ ffor evPB $ \() ->
     liftIO $ putStrLn "starting up..."
-
-  (r, t) <- ask
-  evDelay <- getAsyncEvent $ threadDelay 3000000
-  dDelay  <- holdDyn False $ True <$ evDelay
-  commitLayers $ ffor dDelay $ \case
-    False -> pure $ do
-      clear r
-      rendererDrawColor r $= V4 0 0 255 255
-      present r
-      liftIO $ putStrLn "False"
-    True  -> pure $ do
-      clear r
-      rendererDrawColor r $= V4 0 0 0 255
-      present r  
-      liftIO $ putStrLn "True"
+ 
+  -- evDelay <- getAsyncEvent $ threadDelay 3000000
+  -- dDelay  <- holdDyn False $ True <$ evDelay
+  -- commitLayers $ ffor dDelay $ \case
+  --   False -> pure $ do
+  --     clear r
+  --     rendererDrawColor r $= V4 0 0 255 255
+  --     present r
+  --     liftIO $ putStrLn "False"
+  --   True  -> pure $ do
+  --     clear r
+  --     rendererDrawColor r $= V4 0 0 0 255
+  --     present r  
+  --     liftIO $ putStrLn "True"
 
 app :: (ReflexSDL2 t m, MonadReader (Renderer, Textures) m) => m ()
 app = do
-  (_, dynLayers) <- runDynamicWriterT guest
+  -- (_, dynLayers) <- runDynamicWriterT guest
   (r, t) <- ask
-  performEvent_ $ ffor (updated dynLayers) $ \layers -> do
-    rendererDrawColor r $= V4 128 0 0 255
-    clear r
-    sequence_ layers
-    present r     
+
+  -- todo: create rendering loop
+  let x :: CInt = 500
+  let y :: CInt = 500  
+  let textureToPostions :: SDLTexture -> [Point V2 CInt] = \t -> [P (V2 x y)] 
+  clear r
+  renderGrid r t textureToPostions
+  present r
+  liftIO $ putStrLn "game end"
+  
+  -- performEvent_ $ ffor (updated dynLayers) $ \layers -> do
+  --   rendererDrawColor r $= V4 128 0 0 255
+  --   clear r
+  --   sequence_ layers
+  --   present r     
   evQuit <- getQuitEvent
   performEvent_ $ liftIO (putStrLn "bye!") <$ evQuit
   shutdownOn =<< delay 0 evQuit
@@ -75,7 +86,7 @@ app = do
 main :: IO ()
 main = do
  withSDL $ withSDLImage $
-  withWindow "InvasiveSpecies" (800, 600) $ \world -> 
+  withWindow "InvasiveSpecies" $ \world -> 
    withRenderer world $ \renderer ->
     withTextures renderer $ \(renderer, textures) ->
       host $ runReaderT app $ (renderer, textures)
