@@ -60,15 +60,13 @@ guest = do
   --     present r  
   --     liftIO $ putStrLn "True"
 
+
+  
 app :: (ReflexSDL2 t m, MonadReader (Renderer, Textures) m) => m ()
 app = do
   -- (_, dynLayers) <- runDynamicWriterT guest
   (r, t) <- ask
-
-  -- todo: create rendering loop
-  let x :: CInt = 500
-  let y :: CInt = 500  
-  let textureToPostions :: SDLTexture -> [Point V2 CInt] = \t -> [P (V2 x y)] 
+  let textureToPostions :: SDLTexture -> [Point V2 CInt] = \t -> [P (V2 0 0)] 
   clear r
   renderGrid r t textureToPostions
   present r

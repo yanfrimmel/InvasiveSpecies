@@ -8,9 +8,14 @@ import           Foreign.C.Types
 import           Data.Text
 import           Data.List
 
-screenDimensions :: V2 CInt 
-screenDimensions = V2 800 600
+screenWidth :: CInt
+screenWidth = 800
 
+screenHeight :: CInt
+screenHeight = 600
+
+textureDimensions :: CInt 
+textureDimensions = 32
 
 data TilesInScreen = TilesInScreen {
   _horizontalTilesNumber :: !Int,
@@ -31,14 +36,14 @@ data Textures = Textures { _humanM    :: !SDLTexture
 
 loadTextures :: Renderer -> IO Textures
 loadTextures r = do
-  t <- createTexture r RGBA8888 TextureAccessTarget screenDimensions
+  t <- createTexture r RGBA8888 TextureAccessTarget (V2 screenWidth screenHeight)
   Textures
     <$> loadTexture r "assets/human_male.png"
     <*> loadTexture r "assets/human_female.png"
     <*> loadTexture r "assets/soil.png"
     <*> loadTexture r "assets/grass.png"
     <*> loadTexture r "assets/stones.png"
-    <*> (return $ SDLTexture t screenDimensions)   
+    <*> (return $ SDLTexture t (V2 screenWidth screenHeight))   
 
 loadTexture :: Renderer -> FilePath -> IO SDLTexture
 loadTexture r filePath = do
@@ -79,7 +84,7 @@ withWindow title op = do
   void $ op w
   destroyWindow w
     where
-      size = screenDimensions
+      size = V2 screenWidth screenHeight
       ogl = defaultOpenGL{ glProfile = Core Debug 3 3 }
       cfg = defaultWindow{ windowOpenGL      = Just ogl
                           , windowResizable   = False
@@ -124,16 +129,21 @@ renderGrid :: (MonadIO m) => Renderer -> Textures -> (SDLTexture -> [Point V2 CI
 renderGrid r t textureToPoint = do
   let grid = _gridTexture t
   let soil = _soil t
-  let soilPositions = (textureToPoint soil)
   rendererRenderTarget r $= Just (_getSDLTexture $ grid)
   --TODO: render game objects
-  renderBackground r soil textureToPoint -- render grid background
+  renderBackground r soil -- render grid background
   rendererRenderTarget r $= Nothing -- render window
   Reflex.SDL2.copy r (_getSDLTexture $ grid) Nothing Nothing
 
-renderBackground :: (MonadIO m) => Renderer -> SDLTexture -> (SDLTexture -> [Point V2 CInt]) -> m ()  
-renderBackground r soil textureToPoint = do
-  liftIO $ forM_ (textureToPoint soil) (renderTexture r soil)
+renderBackground :: (MonadIO m) => Renderer -> SDLTexture -> m ()  
+renderBackground r soil = do
+  liftIO $ forM_ (backgroundTexturesPositions 0 0) (renderTexture r soil)
+
+backgroundTexturesPositions :: CInt -> CInt -> [Point V2 CInt] 
+backgroundTexturesPositions x y 
+  | y > screenHeight = []
+  | x > screenWidth  = P (V2 0 y) : backgroundTexturesPositions 0 (y+textureDimensions)
+  | otherwise        = P (V2 x y) : backgroundTexturesPositions (x+textureDimensions) y
 
 renderTexture2 :: (MonadIO m) => Renderer -> SDLTexture -> CInt -> CInt -> m () 
 renderTexture2 r t x y = do
