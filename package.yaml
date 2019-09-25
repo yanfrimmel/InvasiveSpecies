@@ -25,6 +25,7 @@ dependencies:
 - reflex >= 0.5 && < 0.6
 - reflex-sdl2
 - sdl2-image
+- sdl2-ttf
 - text
 
 library:

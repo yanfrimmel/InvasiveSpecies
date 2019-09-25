@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9ecd997fb6189df5304e40aade87b1fb1adb1894ccba8425004b3d46b23a072b
+-- hash: 4ebf9bce1250997b50e8b9ed5dab728248e0e65142b91aac2fbc2c699745ed2d
 
 name:           InvasiveSpecies
 version:        0.1.0.0
@@ -39,6 +39,7 @@ library
     , reflex >=0.5 && <0.6
     , reflex-sdl2
     , sdl2-image
+    , sdl2-ttf
     , text
   default-language: Haskell2010
 
@@ -56,6 +57,7 @@ executable InvasiveSpecies-exe
     , reflex >=0.5 && <0.6
     , reflex-sdl2
     , sdl2-image
+    , sdl2-ttf
     , text
   default-language: Haskell2010
 
@@ -74,5 +76,6 @@ test-suite InvasiveSpecies-test
     , reflex >=0.5 && <0.6
     , reflex-sdl2
     , sdl2-image
+    , sdl2-ttf
     , text
   default-language: Haskell2010

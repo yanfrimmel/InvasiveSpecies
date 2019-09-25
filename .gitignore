@@ -12,6 +12,8 @@ InvasiveSpecies.sublime-workspace
 .cabal-sandbox/
 cabal.sandbox.config
 cabal.config
+InvasiveSpecies.sublime-project
+InvasiveSpecies.sublime-workspace
 .stack-work
 .vscode/
 *.prof

@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables   #-}
+
 module Graphics where
 
 import           Reflex.SDL2
@@ -7,6 +9,8 @@ import           Control.Monad.IO.Class (MonadIO)
 import           Foreign.C.Types
 import           Data.Text
 import           Data.List
+import           GHC.Word(Word32)
+import qualified SDL.Font
 
 screenWidth :: CInt
 screenWidth = 800
@@ -17,14 +21,24 @@ screenHeight = 600
 textureDimensions :: CInt 
 textureDimensions = 32
 
+maxFrames :: Word32
+maxFrames = 60
+
 data TilesInScreen = TilesInScreen {
   _horizontalTilesNumber :: !Int,
   _verticalTilesNumber :: !Int
 }
+data Time =
+  Time
+  { _elapsed :: !Word32
+  , _frameLimit  :: !Word32
+  , _nextFrame   :: !Bool
+  , _postFrame   :: !Bool
+  }
 
-data SDLTexture = SDLTexture { _getSDLTexture :: Texture
-                       , _sizeT         :: V2 CInt
-                       }
+data SDLTexture = SDLTexture { _getSDLTexture :: !Texture
+ , _sizeT :: V2 CInt
+}
 
 data Textures = Textures { _humanM    :: !SDLTexture
 , _humanF    :: !SDLTexture
@@ -70,6 +84,12 @@ withSDL op = do
   void op
   quit
 
+withSDLFont :: (MonadIO m) => m a -> m ()
+withSDLFont op = do
+  SDL.Font.initialize
+  void op
+  SDL.Font.quit  
+
 withSDLImage :: (MonadIO m) => m a -> m ()
 withSDLImage op = do
   SDL.Image.initialize []
@@ -85,7 +105,7 @@ withWindow title op = do
   destroyWindow w
     where
       size = V2 screenWidth screenHeight
-      ogl = defaultOpenGL{ glProfile = Core Debug 3 3 }
+      ogl = defaultOpenGL{ glProfile = Core Normal 3 3 }
       cfg = defaultWindow{ windowOpenGL      = Just ogl
                           , windowResizable   = False
                           , windowHighDPI     = False
@@ -134,6 +154,7 @@ renderGrid r t textureToPoint = do
   renderBackground r soil -- render grid background
   rendererRenderTarget r $= Nothing -- render window
   Reflex.SDL2.copy r (_getSDLTexture $ grid) Nothing Nothing
+  liftIO $ putStrLn $ "renderGrid end"
 
 renderBackground :: (MonadIO m) => Renderer -> SDLTexture -> m ()  
 renderBackground r soil = do
@@ -170,24 +191,56 @@ renderRepeatedTexture r t@(SDLTexture _ (V2 width height)) ox oy = do
 renderRepeatedTextureY :: Renderer -> SDLTexture -> CInt -> [CInt] -> IO ()
 renderRepeatedTextureY r t ox xs =
   forM_ xs $ \oy ->
-    renderTexture r t (P (V2 ox oy))      
--- void gridDraw() {
---   // Render all tiles
---   if(isEntireGridIsDrawn) return;
-  
---   SDL_SetRenderTarget(renderer, gridTexture);
---   printf("gridRender%d, %d\n", GRID_WIDTH, GRID_HEIGHT);
---   for(int i = 0; i < GRID_WIDTH; ++i) {
---       for(int j = 0; j < GRID_HEIGHT; ++j) {
---           gridDrawTile(&(grid->tiles[i][j]));
---       }
---   }
---   SDL_SetRenderTarget(renderer, NULL);
---   isEntireGridIsDrawn = true;
--- }
-  
--- void gridDrawTile(Tile *tile) {
---     RectAndTexture* RectAndTexture = &tile->RectAndTexture;
---     SDL_RenderCopy(renderer, RectAndTexture->texture, NULL, &RectAndTexture->rect);
--- }    
+    renderTexture r t (P (V2 ox oy)) 
+    
+-- Easy way to create a Time
+createTime :: Word32 -> Time
+createTime limit = Time 0 limit True False
 
+-- Update the time with the time since previous frame
+updateTime :: (Word32, Word32) -> Time -> Time
+updateTime (fLimt, delta) time =
+  time
+    { _elapsed = (\(a,_,_) -> a) check
+    , _frameLimit = fLimt
+    , _nextFrame = (\(_,a,_) -> a) check
+    , _postFrame = (\(_,_,a)->a) check
+    }
+    where newAccum = _elapsed time + delta
+          limit
+            | _frameLimit time == 0 = 0
+            | otherwise = round (1000 / fromIntegral (_frameLimit time))
+          check
+            | limit <= 0 = (delta, True, True)
+            | _postFrame time = (mod newAccum limit, False, False)
+            | newAccum > limit = (newAccum, True, True)
+            | otherwise = (newAccum, False, False)    
+           
+renderSolidText :: MonadIO m => Renderer -> SDL.Font.Font -> 
+  SDL.Font.Color -> String -> Int -> Int -> m ()
+renderSolidText r font = do
+  renderText r font (SDL.Font.solid font)            
+
+renderText :: MonadIO m => Renderer -> SDL.Font.Font -> 
+  (SDL.Font.Color -> Data.Text.Text -> m Surface) ->
+  SDL.Font.Color -> String -> Int -> Int -> m ()
+renderText r font fColor c str x y = do
+    let text = Data.Text.pack str
+    surface <- fColor c text
+    texture <- Reflex.SDL2.createTextureFromSurface r surface
+    Reflex.SDL2.freeSurface surface
+    size <- SDL.Font.size font text
+    let (w, h) = size
+        x' :: CInt = fromIntegral x
+        y' :: CInt = fromIntegral y
+    Reflex.SDL2.copy r texture Nothing (Just (Rectangle (P $ V2 x' y') (V2 (fromIntegral w) (fromIntegral h))))
+    Reflex.SDL2.destroyTexture texture
+
+ -- Load a font from a file
+getFontFromFile :: MonadIO m => FilePath -> Int -> m SDL.Font.Font
+getFontFromFile path size = do
+  liftIO $ putStrLn ("Loading font: " ++ show path) 
+  SDL.Font.load path size   
+
+regularFont :: MonadIO m => m SDL.Font.Font
+regularFont = getFontFromFile "assets/ObliviousFont.ttf" 20  
