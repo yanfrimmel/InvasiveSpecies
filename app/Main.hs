@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments        #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -5,19 +6,18 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE BlockArguments        #-}
 
 module Main where
 
-import Game
-import Graphics
 import Control.Concurrent   (threadDelay)
 import Control.Monad        (forM_, guard, void)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
+import Foreign.C.Types
+import Game
+import GHC.Word(Word32)
+import Graphics
 import Reflex
 import Reflex.SDL2
-import Foreign.C.Types
-import GHC.Word(Word32)
 
 main :: IO ()
 main = do

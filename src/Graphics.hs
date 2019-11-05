@@ -2,15 +2,15 @@
 
 module Graphics where
 
-import           Reflex.SDL2
-import qualified SDL.Image
 import           Control.Monad          (void, forM_)
-import           Control.Monad.IO.Class (MonadIO) 
-import           Foreign.C.Types
-import           Data.Text
+import           Control.Monad.IO.Class (MonadIO)
 import           Data.List
+import           Data.Text 
+import           Foreign.C.Types
 import           GHC.Word(Word32)
+import           Reflex.SDL2
 import qualified SDL.Font
+import qualified SDL.Image
 
 screenWidth :: CInt
 screenWidth = 800
@@ -28,25 +28,27 @@ data TilesInScreen = TilesInScreen {
   _horizontalTilesNumber :: !Int,
   _verticalTilesNumber :: !Int
 }
-data Time =
-  Time
-  { _elapsed :: !Word32
-  , _frameLimit  :: !Word32
-  , _nextFrame   :: !Bool
-  , _postFrame   :: !Bool
-  }
 
-data SDLTexture = SDLTexture { _getSDLTexture :: !Texture
- , _sizeT :: V2 CInt
-}
+data Time = Time { 
+  _elapsed :: !Word32,
+  _frameLimit  :: !Word32,
+  _nextFrame   :: !Bool,
+  _postFrame   :: !Bool
+} deriving (Eq, Show)
 
-data Textures = Textures { _humanM    :: !SDLTexture
-, _humanF    :: !SDLTexture
-, _soil    :: !SDLTexture
-, _grass    :: !SDLTexture
-, _stones     :: !SDLTexture
-, _gridTexture :: !SDLTexture
-}
+data SDLTexture = SDLTexture { 
+  _getSDLTexture :: !Texture,
+  _sizeT :: V2 CInt
+} deriving (Eq)
+
+data Textures = Textures { 
+  _humanM    :: !SDLTexture,
+  _humanF    :: !SDLTexture,
+  _soil    :: !SDLTexture,
+  _grass    :: !SDLTexture,
+  _stones     :: !SDLTexture,
+  _gridTexture :: !SDLTexture
+} deriving (Eq)
 
 loadTextures :: Renderer -> IO Textures
 loadTextures r = do
@@ -145,33 +147,26 @@ mkRect x y w h = Rectangle o z
     o = P (V2 x y)
     z = V2 w h 
 
-renderGrid :: (MonadIO m) => Renderer -> Textures -> (SDLTexture -> [Point V2 CInt]) -> m ()
-renderGrid r t textureToPoint = do
+renderGrid :: (MonadIO m) => Renderer -> Textures -> [(SDLTexture, [Point V2 CInt])] -> m ()
+renderGrid r t texturesToPostions = do
   let grid = _gridTexture t
   let soil = _soil t
   rendererRenderTarget r $= Just (_getSDLTexture $ grid)
-  --TODO: render game objects
-  renderBackground r soil -- render grid background
+  forM_ (texturesToPostions) (renderTextureInPositions r) 
+  renderTextureInPositions r (soil, (backgroundTexturesPositions 0 0)) -- render grid background
   rendererRenderTarget r $= Nothing -- render window
   Reflex.SDL2.copy r (_getSDLTexture $ grid) Nothing Nothing
   liftIO $ putStrLn $ "renderGrid end"
 
-renderBackground :: (MonadIO m) => Renderer -> SDLTexture -> m ()  
-renderBackground r soil = do
-  liftIO $ forM_ (backgroundTexturesPositions 0 0) (renderTexture r soil)
+renderTextureInPositions :: (MonadIO m) => Renderer -> (SDLTexture , [Point V2 CInt]) -> m ()  
+renderTextureInPositions r (t,postions) = do
+  liftIO $ forM_ postions (renderTexture r t)
 
 backgroundTexturesPositions :: CInt -> CInt -> [Point V2 CInt] 
 backgroundTexturesPositions x y 
   | y > screenHeight = []
   | x > screenWidth  = P (V2 0 y) : backgroundTexturesPositions 0 (y+textureDimensions)
   | otherwise        = P (V2 x y) : backgroundTexturesPositions (x+textureDimensions) y
-
-renderTexture2 :: (MonadIO m) => Renderer -> SDLTexture -> CInt -> CInt -> m () 
-renderTexture2 r t x y = do
-    Reflex.SDL2.copy r (_getSDLTexture $ t) Nothing (Just (Rectangle o z)) 
-    where
-      o = P (V2 x y)
-      z = _sizeT $ t
 
 renderTexture :: Renderer -> SDLTexture -> Point V2 CInt -> IO ()
 renderTexture r (SDLTexture t size) xy =

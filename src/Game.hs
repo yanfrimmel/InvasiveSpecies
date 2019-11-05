@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments        #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -5,21 +6,32 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE BlockArguments        #-}
 
 module Game where
 
 import Control.Concurrent   (threadDelay)
 import Control.Monad        (forM_, guard, void)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
-import Reflex
-import Reflex.SDL2
-import Graphics
 import Foreign.C.Types
 import GHC.Word(Word32)
+import Graphics
+import Reflex
+import Reflex.SDL2
+import Input
 -- | A type representing one layer in our app.
 type Layer m = Performable m ()
 
+-- _gameObjectsView extracted from _gameObjects
+data GameState = GameState {
+  _gameObjectsView :: ![(SDLTexture, [Point V2 CInt])],
+  _gameObjects :: [GameObject]
+}
+
+data GameObject = GameObject {
+  _id :: !Int,
+  _texture :: SDLTexture,
+  _position :: !(Point V2 CInt)
+}
 ----------------------------------------------------------------------
 -- | Commit a layer stack that changes over time.
 commitLayers :: (ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m)
@@ -32,19 +44,16 @@ commitLayer :: (ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m)
             => Dynamic t (Layer m) -> m ()
 commitLayer = tellDyn . fmap pure
 
-renderAABB :: MonadIO m => Renderer -> V4 Int -> V2 Int -> m ()
-renderAABB r color pos = do
-  rendererDrawColor r $= (fromIntegral <$> color)
-  fillRect r $ Just $ Rectangle (P $ fromIntegral <$> pos - 10) 20
-
 game
   :: (ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m)
   => m ()
 game = do
   --TODO: understand how to create game loop--------------------
   gameReady <- getPostBuild
-  (r, t) <- ask
-  
+  (r, textures) <- ask
+  --TODO: populate game state
+
+  let gameState = GameState {_gameObjectsView = [], _gameObjects = []}
   -- Set up time and limit values
   ticks <- getDeltaTickEvent
   limit <- holdDyn maxFrames never
@@ -62,11 +71,22 @@ game = do
 
   -- Print a message every frame tick
   performEvent_ $ fmap (const fpsPrint fps) (updated fps)
-  
+
+  defMouseButton <- return $ MouseButtonEventData Nothing Released (Mouse 0) ButtonLeft 0 (P $ V2 0 0) 
+  mouseClickDyn <- holdDyn defMouseButton =<< getMouseButtonEvent
+
+  commitLayer $ ffor mouseClickDyn $ \mouseButtonEvent -> 
+    if isLeftButtonIsDown mouseButtonEvent
+      then 
+            --TODO: continue
+      printMessage $ "isLeftButtonIsDown: " ++ show (getMousePosition mouseButtonEvent)
+    else
+      printMessage $ "not isLeftButtonIsDown"
+
   -- render grid every frame  
-  let textureToPostions :: SDLTexture -> [Point V2 CInt] = \t -> [P (V2 0 0)] 
+  
   commitLayer $ ffor deltaCount $ \a -> 
-    renderGrid r t textureToPostions
+    renderGrid r textures (_gameObjectsView gameState)
 
   -- Show FPS on screen sceen once a second
   rf <- regularFont 
@@ -89,3 +109,6 @@ app = do
 -- Function to just print something to the screen
 fpsPrint :: MonadIO m => Integer -> m ()
 fpsPrint fps = liftIO $ putStrLn $ "FPS: " ++ show fps
+
+printMessage :: MonadIO m => String -> m ()
+printMessage m = liftIO $ putStrLn $ m
