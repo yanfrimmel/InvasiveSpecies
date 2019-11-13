@@ -147,16 +147,20 @@ mkRect x y w h = Rectangle o z
     o = P (V2 x y)
     z = V2 w h 
 
-renderGrid :: (MonadIO m) => Renderer -> Textures -> [(SDLTexture, [Point V2 CInt])] -> m ()
-renderGrid r t texturesToPostions = do
+renderGrid :: (MonadIO m) => Renderer -> Textures -> [(SDLTexture, Point V2 CInt)] -> m ()
+renderGrid r t texturesAndPosition = do
   let grid = _gridTexture t
   let soil = _soil t
   rendererRenderTarget r $= Just (_getSDLTexture $ grid)
-  forM_ (texturesToPostions) (renderTextureInPositions r) 
   renderTextureInPositions r (soil, (backgroundTexturesPositions 0 0)) -- render grid background
+  forM_ (texturesAndPosition) (renderTextureInPosition r) 
   rendererRenderTarget r $= Nothing -- render window
   Reflex.SDL2.copy r (_getSDLTexture $ grid) Nothing Nothing
   liftIO $ putStrLn $ "renderGrid end"
+
+renderTextureInPosition :: (MonadIO m) => Renderer -> (SDLTexture , Point V2 CInt) -> m ()
+renderTextureInPosition r (t,postion) = do
+  liftIO $ renderTexture r t postion
 
 renderTextureInPositions :: (MonadIO m) => Renderer -> (SDLTexture , [Point V2 CInt]) -> m ()  
 renderTextureInPositions r (t,postions) = do
