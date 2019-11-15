@@ -87,13 +87,16 @@ inputEventHandler :: Inputs -> GameState -> GameState
 inputEventHandler i g =    
   if (isLeftButtonIsDown $ _mouseButtonEventData i) && currPos /= mousePos
     then
-      upadatePlayerPosition mousePos g
+      upadatePlayerPosition (fromPointDoubleToPointCInt $ P newPositon) g
   else 
     g 
   where 
     mousePos = getMousePosition $ _mouseButtonEventData i
-    currPos = _position (_player g)  
-    -- dis = distance (unP currPos) (unP mousePos)
+    speed = _speed (_player g)
+    currPos = _position (_player g)
+    elapsed = 1 / fromIntegral (_currentFPS i)
+    direction = normalize $ (fromPointCIntToVectorDouble mousePos) ^-^ (fromPointCIntToVectorDouble currPos)
+    newPositon = (fromPointCIntToVectorDouble currPos) ^+^ (direction ^* (fromIntegral speed * elapsed))
 
 renderGameGrid :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => Dynamic t Integer -> Dynamic t Integer -> m ()
 renderGameGrid deltaCountDyn fpsDyn = do
@@ -101,15 +104,15 @@ renderGameGrid deltaCountDyn fpsDyn = do
   defaultMouseButton <- return $ MouseButtonEventData Nothing Released (Mouse 0) ButtonLeft 0 (P $ V2 0 0)
   mouseClickDyn <- holdDyn defaultMouseButton =<< getMouseButtonEvent
 
-  let initialGameState = GameState {_player = GameObject {_id = 1, _speed = 3, _texture =  _humanM textures, _position = (P (V2 0 0)) }, _gameObjects = []}
-  let initialInput = Inputs {_mouseButtonEventData = defaultMouseButton } 
-  gameInputsByMouseClickDyn <- gameStateDynamicInitalize initialInput (updated mouseClickDyn)
+  let initialGameState = GameState {_player = GameObject {_id = 1, _speed = 100, _texture =  _humanM textures, _position = (P (V2 0 0)) }, _gameObjects = []}
+  let initialInput = Inputs {_currentFPS = 1, _mouseButtonEventData = defaultMouseButton } 
+  gameInputsByMouseClickDyn <- gameStateDynamicInitalize initialInput (attachPromptlyDyn fpsDyn (updated mouseClickDyn)) 
   -- TODO: attach other than mouse input events
   let inputUpdateEvent = tagPromptlyDyn gameInputsByMouseClickDyn (updated deltaCountDyn)
-  stateDynVal <- foldDyn inputEventHandler initialGameState inputUpdateEvent
+  gameStateDyn <- foldDyn inputEventHandler initialGameState inputUpdateEvent
   
   commitLayer $ ffor deltaCountDyn $ \deltaCount -> do 
-    newState <- sample $ current stateDynVal
+    newState <- sample $ current gameStateDyn
     -- printMessage $ showPositionsInState $ head (createGameStateView newState)
     -- printMessage $ "deltaCount: " ++ show deltaCount
     renderGrid r textures (createGameStateView newState)  
@@ -122,11 +125,11 @@ showFPSOnScreenOnceASecond r fpsDyn = do
   commitLayer $ ffor fpsDyn $ \a -> 
     renderSolidText r rf (V4 255 255 0 255) ("FPS: " ++ show a) 0 0
 
-gameStateDynamicInitalize :: (ReflexSDL2 t m) => Inputs -> Event t MouseButtonEventData -> m (Dynamic t Inputs)
-gameStateDynamicInitalize i e = foldDyn fromMouseEventToInputs i e
+gameStateDynamicInitalize :: (ReflexSDL2 t m) => Inputs -> Event t (Integer, MouseButtonEventData) -> m (Dynamic t Inputs)
+gameStateDynamicInitalize i ev = foldDyn fromEventsToInputs i ev
 
-fromMouseEventToInputs :: MouseButtonEventData -> Inputs -> Inputs
-fromMouseEventToInputs m i = i {_mouseButtonEventData = m}
+fromEventsToInputs :: (Integer, MouseButtonEventData) -> Inputs -> Inputs
+fromEventsToInputs e i = i {_currentFPS = fst e, _mouseButtonEventData = snd e}
     
 -- Function to just print something to the screen
 fpsPrint :: MonadIO m => Integer -> m ()

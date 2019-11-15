@@ -134,6 +134,12 @@ loadTextureWithInfo r p = do
 mkPoint :: a -> a -> Point V2 a
 mkPoint x y = P (V2 x y)
 
+fromPointCIntToVectorDouble :: Point V2 CInt -> V2 Double
+fromPointCIntToVectorDouble (P (V2 x y)) = V2 (fromIntegral x) (fromIntegral y)
+
+fromPointDoubleToPointCInt :: Point V2 Double -> Point V2 CInt
+fromPointDoubleToPointCInt (P (V2 x y)) = P $ V2 (round x) (round y)
+
 mkRect :: a -> a -> a -> a-> Rectangle a
 mkRect x y w h = Rectangle o z
   where
