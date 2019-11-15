@@ -15,9 +15,10 @@ import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Foreign.C.Types
 import GHC.Word(Word32)
 import Graphics
+import Input
 import Reflex
 import Reflex.SDL2
-import Input
+import Time
 
 -- | A type representing one layer in our app.
 type Layer m = Performable m ()
@@ -58,39 +59,29 @@ app = do
   performEvent_ $ liftIO (putStrLn "bye!") <$ evQuit
   shutdownOn =<< delay 0 evQuit
 
-game
-  :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m)
-  => m ()
+game :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => m ()
 game = do
   gameReady <- getPostBuild
-  (r, textures) <- ask
-  -- Set up time and limit values
-  ticks <- getDeltaTickEvent
-  limit <- holdDyn maxFrames never
-  unfTime <- foldDyn updateTime (createTime maxFrames) (attachPromptlyDyn limit ticks)
-  -- Filter out non-game ticks
-  delta <- holdDyn (createTime 0) (ffilter _nextFrame (updated unfTime))
-  -- Count when delta fires and compare at different times to calculate fps
-  deltaCount <- count $ updated delta
-  -- Tick every second to calculate FPS
+  gameTimeDyn <- createGameFrameTimeDynamic -- set up time and limit values
+  deltaDyn <- holdDyn (createTime 0) (ffilter _nextFrame (updated gameTimeDyn))   -- Filter out non-game ticks
+  deltaCountDyn <- count $ updated deltaDyn  -- Count when delta fires and compare at different times to calculate fps
+  fpsDyn <- createTickOnceASecondDynamic deltaCountDyn -- Tick once a second to calculate FPS
+  performEvent_ $ fmap (fpsPrint) (updated fpsDyn) -- Print a message every frame tick
+  renderGameGrid deltaCountDyn fpsDyn
+
+createGameFrameTimeDynamic :: (ReflexSDL2 t m) => m (Dynamic t Time) 
+createGameFrameTimeDynamic = do
+  tickEvent <- getDeltaTickEvent
+  limitDyn <- holdDyn maxFrames never
+  unfTimeDyn <- foldDyn updateTime (createTime maxFrames) (attachPromptlyDyn limitDyn tickEvent)
+  return unfTimeDyn
+
+createTickOnceASecondDynamic :: (ReflexSDL2 t m) =>  Dynamic t Integer -> m (Dynamic t Integer)
+createTickOnceASecondDynamic deltaCount = do
   secondCount <- tickLossyFromPostBuildTime 1
   deltaStore <- foldDyn (\a (b,_)->(a,b)) (0,0) $ tagPromptlyDyn deltaCount secondCount
-  fps <- holdDyn 0 $ uncurry (-) <$> updated deltaStore
-  -- Print a message every frame tick
-  performEvent_ $ fmap (fpsPrint) (updated fps)
-  -- render game
-  updateGame r textures deltaCount
-  -- Show FPS on screen sceen once a second
-  rf <- regularFont 
-  commitLayer $ ffor fps $ \a -> 
-    renderSolidText r rf (V4 255 255 0 255) ("FPS: " ++ show a) 0 0
-  ----------------------------------
-
-gameStateDynamicInitalize :: (ReflexSDL2 t m) => Inputs -> Event t MouseButtonEventData -> m (Dynamic t Inputs)
-gameStateDynamicInitalize i e = foldDyn fromMouseEventToInputs i e
-
-fromMouseEventToInputs :: MouseButtonEventData -> Inputs -> Inputs
-fromMouseEventToInputs m i = i {_mouseButtonEventData = m}
+  fpsDyn <- holdDyn 0 $ uncurry (-) <$> updated deltaStore
+  return fpsDyn
   
 inputEventHandler :: Inputs -> GameState -> GameState  
 inputEventHandler i g =    
@@ -104,8 +95,9 @@ inputEventHandler i g =
     currPos = _position (_player g)  
     -- dis = distance (unP currPos) (unP mousePos)
 
-updateGame :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m) => Renderer -> Textures -> Dynamic t Integer -> m ()
-updateGame r textures  deltaCount = do
+renderGameGrid :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => Dynamic t Integer -> Dynamic t Integer -> m ()
+renderGameGrid deltaCountDyn fpsDyn = do
+  (r, textures) <- ask
   defaultMouseButton <- return $ MouseButtonEventData Nothing Released (Mouse 0) ButtonLeft 0 (P $ V2 0 0)
   mouseClickDyn <- holdDyn defaultMouseButton =<< getMouseButtonEvent
 
@@ -113,14 +105,29 @@ updateGame r textures  deltaCount = do
   let initialInput = Inputs {_mouseButtonEventData = defaultMouseButton } 
   gameInputsByMouseClickDyn <- gameStateDynamicInitalize initialInput (updated mouseClickDyn)
   -- TODO: attach other than mouse input events
-  let inputUpdateEvent = tagPromptlyDyn gameInputsByMouseClickDyn (updated deltaCount)
+  let inputUpdateEvent = tagPromptlyDyn gameInputsByMouseClickDyn (updated deltaCountDyn)
   stateDynVal <- foldDyn inputEventHandler initialGameState inputUpdateEvent
   
-  commitLayer $ ffor deltaCount $ \a -> do 
+  commitLayer $ ffor deltaCountDyn $ \deltaCount -> do 
     newState <- sample $ current stateDynVal
-    printMessage $ showPositionsInState $ head (createGameStateView newState)
+    -- printMessage $ showPositionsInState $ head (createGameStateView newState)
+    -- printMessage $ "deltaCount: " ++ show deltaCount
     renderGrid r textures (createGameStateView newState)  
 
+  showFPSOnScreenOnceASecond r fpsDyn   
+
+showFPSOnScreenOnceASecond :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m) => Renderer -> Dynamic t Integer -> m ()
+showFPSOnScreenOnceASecond r fpsDyn = do 
+  rf <- regularFont 
+  commitLayer $ ffor fpsDyn $ \a -> 
+    renderSolidText r rf (V4 255 255 0 255) ("FPS: " ++ show a) 0 0
+
+gameStateDynamicInitalize :: (ReflexSDL2 t m) => Inputs -> Event t MouseButtonEventData -> m (Dynamic t Inputs)
+gameStateDynamicInitalize i e = foldDyn fromMouseEventToInputs i e
+
+fromMouseEventToInputs :: MouseButtonEventData -> Inputs -> Inputs
+fromMouseEventToInputs m i = i {_mouseButtonEventData = m}
+    
 -- Function to just print something to the screen
 fpsPrint :: MonadIO m => Integer -> m ()
 fpsPrint fps = liftIO $ putStrLn $ "FPS: " ++ show fps

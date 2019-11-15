@@ -9,14 +9,9 @@
 
 module Main where
 
-import Control.Concurrent   (threadDelay)
-import Control.Monad        (forM_, guard, void)
-import Control.Monad.Reader (MonadReader (..), runReaderT)
-import Foreign.C.Types
+import Control.Monad.Reader (runReaderT)
 import Game
-import GHC.Word(Word32)
 import Graphics
-import Reflex
 import Reflex.SDL2
 
 main :: IO ()
@@ -24,5 +19,5 @@ main = do
  withSDL $ withSDLImage $ withSDLFont $
   withWindow "InvasiveSpecies" $ \world -> 
    withRenderer world $ \renderer ->
-    withTextures renderer $ \(renderer, textures) ->
-      host $ runReaderT app $ (renderer, textures)
+    withTextures renderer $ \(rendererTextures, textures) ->
+      host $ runReaderT app $ (rendererTextures, textures)

@@ -29,13 +29,6 @@ data TilesInScreen = TilesInScreen {
   _verticalTilesNumber :: !Int
 }
 
-data Time = Time { 
-  _elapsed :: !Word32,
-  _frameLimit  :: !Word32,
-  _nextFrame   :: !Bool,
-  _postFrame   :: !Bool
-} deriving (Eq, Show)
-
 data SDLTexture = SDLTexture { 
   _getSDLTexture :: !Texture,
   _sizeT :: V2 CInt
@@ -175,45 +168,6 @@ backgroundTexturesPositions x y
 renderTexture :: Renderer -> SDLTexture -> Point V2 CInt -> IO ()
 renderTexture r (SDLTexture t size) xy =
   Reflex.SDL2.copy r t Nothing (Just $ Rectangle xy size)
-
-renderTextureRotated :: Renderer -> SDLTexture -> Point V2 CInt -> CDouble -> IO ()
-renderTextureRotated r (SDLTexture t size) xy ang =
-  copyEx r t Nothing (Just $ Rectangle xy size) ang Nothing (V2 False False)
-
-renderRepeatedTexture :: Renderer -> SDLTexture -> CInt -> CInt -> IO ()
-renderRepeatedTexture r t@(SDLTexture _ (V2 width height)) ox oy = do
-  renderTexture r t (P (V2 offset (oy - height)))
-  renderTexture r t (P (V2 (offset + width) (oy - height)))
-  where
-    offset = ox - (ox `div` width) * width - width
-
-renderRepeatedTextureY :: Renderer -> SDLTexture -> CInt -> [CInt] -> IO ()
-renderRepeatedTextureY r t ox xs =
-  forM_ xs $ \oy ->
-    renderTexture r t (P (V2 ox oy)) 
-    
--- Easy way to create a Time
-createTime :: Word32 -> Time
-createTime limit = Time 0 limit True False
-
--- Update the time with the time since previous frame
-updateTime :: (Word32, Word32) -> Time -> Time
-updateTime (fLimt, delta) time =
-  time
-    { _elapsed = (\(a,_,_) -> a) check
-    , _frameLimit = fLimt
-    , _nextFrame = (\(_,a,_) -> a) check
-    , _postFrame = (\(_,_,a)->a) check
-    }
-    where newAccum = _elapsed time + delta
-          limit
-            | _frameLimit time == 0 = 0
-            | otherwise = round (1000 / fromIntegral (_frameLimit time))
-          check
-            | limit <= 0 = (delta, True, True)
-            | _postFrame time = (mod newAccum limit, False, False)
-            | newAccum > limit = (newAccum, True, True)
-            | otherwise = (newAccum, False, False)    
            
 renderSolidText :: MonadIO m => Renderer -> SDL.Font.Font -> 
   SDL.Font.Color -> String -> Int -> Int -> m ()
