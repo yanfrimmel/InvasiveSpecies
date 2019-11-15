@@ -15,10 +15,10 @@ getMousePosition dat = pos
   where P pos32 = mouseButtonEventPos dat
         pos = P (fromIntegral <$> pos32)
 
-isLeftButtonIsDown :: MouseButtonEventData -> Bool
-isLeftButtonIsDown m = 
+isLeftButtonDown :: MouseButtonEventData -> Bool
+isLeftButtonDown m = 
     mouseButtonEventMotion m == Pressed && mouseButtonEventButton m == ButtonLeft
 
-isLeftButtonIsUp :: MouseButtonEventData -> Bool
-isLeftButtonIsUp m = 
+isLeftButtonUp :: MouseButtonEventData -> Bool
+isLeftButtonUp m = 
     mouseButtonEventMotion m == Released && mouseButtonEventButton m == ButtonLeft    

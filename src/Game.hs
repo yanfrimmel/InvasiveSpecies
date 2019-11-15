@@ -85,7 +85,7 @@ createTickOnceASecondDynamic deltaCount = do
   
 inputEventHandler :: Inputs -> GameState -> GameState  
 inputEventHandler i g =    
-  if (isLeftButtonIsDown $ _mouseButtonEventData i) && currPos /= mousePos
+  if (isLeftButtonDown $ _mouseButtonEventData i) && currPos /= mousePos
     then
       upadatePlayerPosition (fromPointDoubleToPointCInt $ P newPositon) g
   else 
@@ -106,9 +106,8 @@ renderGameGrid deltaCountDyn fpsDyn = do
 
   let initialGameState = GameState {_player = GameObject {_id = 1, _speed = 100, _texture =  _humanM textures, _position = (P (V2 0 0)) }, _gameObjects = []}
   let initialInput = Inputs {_currentFPS = 1, _mouseButtonEventData = defaultMouseButton } 
-  gameInputsByMouseClickDyn <- gameStateDynamicInitalize initialInput (attachPromptlyDyn fpsDyn (updated mouseClickDyn)) 
-  -- TODO: attach other than mouse input events
-  let inputUpdateEvent = tagPromptlyDyn gameInputsByMouseClickDyn (updated deltaCountDyn)
+  gameInputsDyn <- gameStateDynamicInitalize initialInput (attachPromptlyDynWith putMouseAndFpsEventIntoInputs fpsDyn $ updated mouseClickDyn)
+  let inputUpdateEvent = tagPromptlyDyn gameInputsDyn (updated deltaCountDyn)
   gameStateDyn <- foldDyn inputEventHandler initialGameState inputUpdateEvent
   
   commitLayer $ ffor deltaCountDyn $ \deltaCount -> do 
@@ -119,17 +118,20 @@ renderGameGrid deltaCountDyn fpsDyn = do
 
   showFPSOnScreenOnceASecond r fpsDyn   
 
+putMouseAndFpsEventIntoInputs :: Integer -> MouseButtonEventData -> Inputs
+putMouseAndFpsEventIntoInputs fps m = Inputs{_currentFPS = fps, _mouseButtonEventData = m}
+
 showFPSOnScreenOnceASecond :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m) => Renderer -> Dynamic t Integer -> m ()
 showFPSOnScreenOnceASecond r fpsDyn = do 
   rf <- regularFont 
   commitLayer $ ffor fpsDyn $ \a -> 
     renderSolidText r rf (V4 255 255 0 255) ("FPS: " ++ show a) 0 0
 
-gameStateDynamicInitalize :: (ReflexSDL2 t m) => Inputs -> Event t (Integer, MouseButtonEventData) -> m (Dynamic t Inputs)
+gameStateDynamicInitalize :: (ReflexSDL2 t m) => Inputs -> Event t Inputs -> m (Dynamic t Inputs)
 gameStateDynamicInitalize i ev = foldDyn fromEventsToInputs i ev
 
-fromEventsToInputs :: (Integer, MouseButtonEventData) -> Inputs -> Inputs
-fromEventsToInputs e i = i {_currentFPS = fst e, _mouseButtonEventData = snd e}
+fromEventsToInputs :: Inputs -> Inputs -> Inputs
+fromEventsToInputs e i = i {_currentFPS = _currentFPS e, _mouseButtonEventData = _mouseButtonEventData e}
     
 -- Function to just print something to the screen
 fpsPrint :: MonadIO m => Integer -> m ()

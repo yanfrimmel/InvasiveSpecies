@@ -155,7 +155,7 @@ renderGrid r t texturesAndPosition = do
   forM_ (texturesAndPosition) (renderTextureInPosition r) 
   rendererRenderTarget r $= Nothing -- render window
   Reflex.SDL2.copy r (_getSDLTexture $ grid) Nothing Nothing
-  liftIO $ putStrLn $ "renderGrid end"
+  -- liftIO $ putStrLn $ "renderGrid end"
 
 renderTextureInPosition :: (MonadIO m) => Renderer -> (SDLTexture , Point V2 CInt) -> m ()
 renderTextureInPosition r (t,postion) = do
