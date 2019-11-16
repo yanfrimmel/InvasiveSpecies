@@ -91,7 +91,7 @@ inputEventHandler i g =
   else 
     g 
   where 
-    mousePos = getMousePosition $ fst $ _mouseInput i
+    mousePos = getMousePosition $ snd $ _mouseInput i
     speed = _speed (_player g)
     currPos = _position (_player g)
     elapsed = 1 / fromIntegral (_currentFPS i)
@@ -138,7 +138,7 @@ fpsPrint fps = liftIO $ putStrLn $ "FPS: " ++ show fps
 
 -- Function to just print something to the screen
 onMouseClick :: MonadIO m => MouseButtonEventData -> m ()
-onMouseClick m = printMessage $ "new position: " ++ show (getMousePosition m)
+onMouseClick m = printMessage $ "new position: " ++ show (getMouseButtonClickPosition m)
 
 printMessage :: MonadIO m => String -> m ()
 printMessage m = liftIO $ putStrLn $ m
