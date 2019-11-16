@@ -22,7 +22,7 @@ textureDimensions :: CInt
 textureDimensions = 32
 
 maxFrames :: Word32
-maxFrames = 60
+maxFrames = 600
 
 data TilesInScreen = TilesInScreen {
   _horizontalTilesNumber :: !Int,
