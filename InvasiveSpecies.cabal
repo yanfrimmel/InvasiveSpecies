@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.32.0.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e89a7e4a24033c1d9504329ed850302211b9ae89086432ce87d5bb82c8741ad6
+-- hash: e28e6dcbaf92ada5401cd5b809bfe88000c004699eb73889f7598d70e6b43ddd
 
 name:           InvasiveSpecies
 version:        0.1.0.0
@@ -19,7 +19,6 @@ license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
-    ChangeLog.md
 
 source-repository head
   type: git

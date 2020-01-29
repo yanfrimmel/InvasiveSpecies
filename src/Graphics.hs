@@ -4,8 +4,7 @@ module Graphics where
 
 import           Control.Monad          (void, forM_)
 import           Control.Monad.IO.Class (MonadIO)
-import           Data.List
-import           Data.Text 
+import           Data.Text
 import           Foreign.C.Types
 import           GHC.Word(Word32)
 import           Reflex.SDL2
@@ -18,7 +17,7 @@ screenWidth = 800
 screenHeight :: CInt
 screenHeight = 600
 
-textureDimensions :: CInt 
+textureDimensions :: CInt
 textureDimensions = 32
 
 maxFrames :: Word32
@@ -29,12 +28,12 @@ data TilesInScreen = TilesInScreen {
   _verticalTilesNumber :: !Int
 }
 
-data SDLTexture = SDLTexture { 
+data SDLTexture = SDLTexture {
   _getSDLTexture :: !Texture,
   _sizeT :: V2 CInt
 } deriving (Eq)
 
-data Textures = Textures { 
+data Textures = Textures {
   _humanM    :: !SDLTexture,
   _humanF    :: !SDLTexture,
   _soil    :: !SDLTexture,
@@ -52,7 +51,7 @@ loadTextures r = do
     <*> loadTexture r "assets/soil.png"
     <*> loadTexture r "assets/grass.png"
     <*> loadTexture r "assets/stones.png"
-    <*> (return $ SDLTexture t (V2 screenWidth screenHeight))   
+    <*> (return $ SDLTexture t (V2 screenWidth screenHeight))
 
 loadTexture :: Renderer -> FilePath -> IO SDLTexture
 loadTexture r filePath = do
@@ -63,7 +62,7 @@ loadTexture r filePath = do
   t <- createTextureFromSurface r surface
   freeSurface surface
   return $ SDLTexture t size
-    
+
 destroyTextures :: Textures -> IO ()
 destroyTextures ts = do
   destroyTexture $ _getSDLTexture $ _humanM ts
@@ -83,7 +82,7 @@ withSDLFont :: (MonadIO m) => m a -> m ()
 withSDLFont op = do
   SDL.Font.initialize
   void op
-  SDL.Font.quit  
+  SDL.Font.quit
 
 withSDLImage :: (MonadIO m) => m a -> m ()
 withSDLImage op = do
@@ -92,7 +91,7 @@ withSDLImage op = do
   SDL.Image.quit
 
 withWindow :: (MonadIO m) => Text -> (Window -> m a) -> m ()
-withWindow title op = do      
+withWindow title op = do
   w <- createWindow title cfg
   showWindow w
   void $ glCreateContext w
@@ -112,13 +111,13 @@ withRenderer w op = do
   r <- createRenderer w (-1) defaultRenderer
   rendererDrawBlendMode r $= BlendAlphaBlend
   void $ op r
-  destroyRenderer r    
+  destroyRenderer r
 
 withTextures :: (MonadIO m) => Renderer -> ((Renderer, Textures) -> m a) -> m ()
 withTextures r op = do
     t <- liftIO $ loadTextures r
     void $ op (r, t)
-    liftIO $ destroyTextures t      
+    liftIO $ destroyTextures t
 
 renderSurfaceToWindow :: (MonadIO m) => Window -> Surface -> Surface -> m ()
 renderSurfaceToWindow w s i
@@ -144,7 +143,7 @@ mkRect :: a -> a -> a -> a-> Rectangle a
 mkRect x y w h = Rectangle o z
   where
     o = P (V2 x y)
-    z = V2 w h 
+    z = V2 w h
 
 renderGrid :: (MonadIO m) => Renderer -> Textures -> [(SDLTexture, Point V2 CInt)] -> m ()
 renderGrid r t texturesAndPosition = do
@@ -152,7 +151,7 @@ renderGrid r t texturesAndPosition = do
   let soil = _soil t
   rendererRenderTarget r $= Just (_getSDLTexture $ grid)
   renderTextureInPositions r (soil, (backgroundTexturesPositions 0 0)) -- render grid background
-  forM_ (texturesAndPosition) (renderTextureInPosition r) 
+  forM_ (texturesAndPosition) (renderTextureInPosition r)
   rendererRenderTarget r $= Nothing -- render window
   Reflex.SDL2.copy r (_getSDLTexture $ grid) Nothing Nothing
   -- liftIO $ putStrLn $ "renderGrid end"
@@ -161,12 +160,12 @@ renderTextureInPosition :: (MonadIO m) => Renderer -> (SDLTexture , Point V2 CIn
 renderTextureInPosition r (t,postion) = do
   liftIO $ renderTexture r t postion
 
-renderTextureInPositions :: (MonadIO m) => Renderer -> (SDLTexture , [Point V2 CInt]) -> m ()  
+renderTextureInPositions :: (MonadIO m) => Renderer -> (SDLTexture , [Point V2 CInt]) -> m ()
 renderTextureInPositions r (t,postions) = do
   liftIO $ forM_ postions (renderTexture r t)
 
-backgroundTexturesPositions :: CInt -> CInt -> [Point V2 CInt] 
-backgroundTexturesPositions x y 
+backgroundTexturesPositions :: CInt -> CInt -> [Point V2 CInt]
+backgroundTexturesPositions x y
   | y > screenHeight = []
   | x > screenWidth  = P (V2 0 y) : backgroundTexturesPositions 0 (y+textureDimensions)
   | otherwise        = P (V2 x y) : backgroundTexturesPositions (x+textureDimensions) y
@@ -174,13 +173,13 @@ backgroundTexturesPositions x y
 renderTexture :: Renderer -> SDLTexture -> Point V2 CInt -> IO ()
 renderTexture r (SDLTexture t size) xy =
   Reflex.SDL2.copy r t Nothing (Just $ Rectangle xy size)
-           
-renderSolidText :: MonadIO m => Renderer -> SDL.Font.Font -> 
+
+renderSolidText :: MonadIO m => Renderer -> SDL.Font.Font ->
   SDL.Font.Color -> String -> Int -> Int -> m ()
 renderSolidText r font = do
-  renderText r font (SDL.Font.solid font)            
+  renderText r font (SDL.Font.solid font)
 
-renderText :: MonadIO m => Renderer -> SDL.Font.Font -> 
+renderText :: MonadIO m => Renderer -> SDL.Font.Font ->
   (SDL.Font.Color -> Data.Text.Text -> m Surface) ->
   SDL.Font.Color -> String -> Int -> Int -> m ()
 renderText r font fColor c str x y = do
@@ -198,8 +197,8 @@ renderText r font fColor c str x y = do
  -- Load a font from a file
 getFontFromFile :: MonadIO m => FilePath -> Int -> m SDL.Font.Font
 getFontFromFile path size = do
-  liftIO $ putStrLn ("Loading font: " ++ show path) 
-  SDL.Font.load path size   
+  liftIO $ putStrLn ("Loading font: " ++ show path)
+  SDL.Font.load path size
 
 regularFont :: MonadIO m => m SDL.Font.Font
-regularFont = getFontFromFile "assets/ObliviousFont.ttf" 20  
+regularFont = getFontFromFile "assets/ObliviousFont.ttf" 20

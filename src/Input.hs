@@ -1,8 +1,6 @@
 module Input where
 
 import Foreign.C.Types
-import GHC.Word(Word32)
-import Reflex
 import Reflex.SDL2
 
 data Inputs = Inputs {

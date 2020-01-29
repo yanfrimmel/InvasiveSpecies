@@ -9,11 +9,10 @@
 
 module Game where
 
-import Control.Concurrent   (threadDelay)
-import Control.Monad        (forM_, guard, void)
-import Control.Monad.Reader (MonadReader (..), runReaderT)
+import Control.Concurrent   ()
+import Control.Monad        ()
+import Control.Monad.Reader (MonadReader (..))
 import Foreign.C.Types
-import GHC.Word(Word32)
 import Graphics
 import Input
 import Reflex
@@ -49,7 +48,7 @@ commitLayer = tellDyn . fmap pure
 
 app :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadReader (Renderer, Textures) m) => m ()
 app = do
-  (r, t) <- ask
+  (r, _) <- ask
   (_, dynLayers) <- runDynamicWriterT game
   performEvent_ $ ffor (updated dynLayers) $ \layers -> do
     clear r
@@ -61,7 +60,7 @@ app = do
 
 game :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => m ()
 game = do
-  gameReady <- getPostBuild
+  _ <- getPostBuild
   gameTimeDyn <- createGameFrameTimeDynamic -- set up time and limit values
   deltaDyn <- holdDyn (createTime 0) (ffilter _nextFrame (updated gameTimeDyn))   -- Filter out non-game ticks
   deltaCountDyn <- count $ updated deltaDyn  -- Count when delta fires and compare at different times to calculate fps
@@ -110,12 +109,12 @@ renderGameGrid deltaCountDyn fpsDyn = do
   let mouseInputDyn = zipDyn mouseClickDyn mouseMotionDyn
   
   let initialGameState = GameState {_player = GameObject {_id = 1, _speed = 1000, _texture =  _humanM textures, _position = (P (V2 0 0)) }, _gameObjects = []}
-  let initialInput = Inputs {_currentFPS = 1, _mouseInput = (defaultMouseButton, defaultMouseMotion) } 
+  -- let initialInput = Inputs {_currentFPS = 1, _mouseInput = (defaultMouseButton, defaultMouseMotion) } 
   let gameInputsDyn = zipDynWith putMouseAndFpsEventIntoInputs fpsDyn mouseInputDyn
   let inputUpdateEvent = tagPromptlyDyn gameInputsDyn (updated deltaCountDyn)
   gameStateDyn <- foldDyn inputEventHandler initialGameState inputUpdateEvent
   
-  commitLayer $ ffor deltaCountDyn $ \deltaCount -> do 
+  commitLayer $ ffor deltaCountDyn $ \_ -> do 
     newState <- sample $ current gameStateDyn
     -- printMessage $ showPositionsInState $ head (createGameStateView newState)
     -- printMessage $ "deltaCount: " ++ show deltaCount
@@ -144,7 +143,7 @@ printMessage :: MonadIO m => String -> m ()
 printMessage m = liftIO $ putStrLn $ m
 
 showPositionsInState :: (SDLTexture, Point V2 CInt) -> String
-showPositionsInState (texture, position) = "showPositionsInState: " ++ show position
+showPositionsInState (_, position) = "showPositionsInState: " ++ show position
 
 upadatePlayerPosition :: Point V2 CInt -> GameState -> GameState
 upadatePlayerPosition p s =  

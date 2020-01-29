@@ -25,7 +25,7 @@ updateTime (fLimt, delta) time =
     where newAccum = _elapsed time + delta
           limit
             | _frameLimit time == 0 = 0
-            | otherwise = round (1000 / fromIntegral (_frameLimit time))
+            | otherwise = round ((1000 :: Double) / fromIntegral (_frameLimit time))
           check
             | limit <= 0 = (delta, True, True) -- no limit 
             | _postFrame time = (mod newAccum limit, False, False)
