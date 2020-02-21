@@ -11,17 +11,23 @@ import           Reflex.SDL2
 import qualified SDL.Font
 import qualified SDL.Image
 
-screenWidth :: CInt
-screenWidth = 800
+windowWidth :: CInt
+windowWidth = 800
 
-screenHeight :: CInt
-screenHeight = 600
+windowHeight :: CInt
+windowHeight = 600
+
+worldWidth :: CInt
+worldWidth = 10000
+
+worldHeight :: CInt
+worldHeight = 10000
 
 textureDimensions :: CInt
 textureDimensions = 32
 
 maxFrames :: Word32
-maxFrames = 600
+maxFrames = 1000
 
 data TilesInScreen = TilesInScreen {
   _horizontalTilesNumber :: !Int,
@@ -44,14 +50,14 @@ data Textures = Textures {
 
 loadTextures :: Renderer -> IO Textures
 loadTextures r = do
-  t <- createTexture r RGBA8888 TextureAccessTarget (V2 screenWidth screenHeight)
+  t <- createTexture r RGBA8888 TextureAccessTarget (V2 windowWidth windowHeight)
   Textures
     <$> loadTexture r "assets/human_male.png"
     <*> loadTexture r "assets/human_female.png"
     <*> loadTexture r "assets/soil.png"
     <*> loadTexture r "assets/grass.png"
     <*> loadTexture r "assets/stones.png"
-    <*> (return $ SDLTexture t (V2 screenWidth screenHeight))
+    <*> (return $ SDLTexture t (V2 windowWidth windowHeight))
 
 loadTexture :: Renderer -> FilePath -> IO SDLTexture
 loadTexture r filePath = do
@@ -98,7 +104,7 @@ withWindow title op = do
   void $ op w
   destroyWindow w
     where
-      size = V2 screenWidth screenHeight
+      size = V2 windowWidth windowHeight
       ogl = defaultOpenGL{ glProfile = Core Normal 3 3 }
       cfg = defaultWindow{ windowOpenGL      = Just ogl
                           , windowResizable   = False
@@ -166,8 +172,8 @@ renderTextureInPositions r (t,postions) = do
 
 backgroundTexturesPositions :: CInt -> CInt -> [Point V2 CInt]
 backgroundTexturesPositions x y
-  | y > screenHeight = []
-  | x > screenWidth  = P (V2 0 y) : backgroundTexturesPositions 0 (y+textureDimensions)
+  | y > windowHeight = []
+  | x > windowWidth  = P (V2 0 y) : backgroundTexturesPositions 0 (y+textureDimensions)
   | otherwise        = P (V2 x y) : backgroundTexturesPositions (x+textureDimensions) y
 
 renderTexture :: Renderer -> SDLTexture -> Point V2 CInt -> IO ()
