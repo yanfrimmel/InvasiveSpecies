@@ -44,8 +44,7 @@ data Textures = Textures {
   _humanF    :: !SDLTexture,
   _soil    :: !SDLTexture,
   _grass    :: !SDLTexture,
-  _stones     :: !SDLTexture,
-  _gridTexture :: !SDLTexture
+  _stones     :: !SDLTexture
 } deriving (Eq)
 
 loadTextures :: Renderer -> IO Textures
@@ -57,7 +56,6 @@ loadTextures r = do
     <*> loadTexture r "assets/soil.png"
     <*> loadTexture r "assets/grass.png"
     <*> loadTexture r "assets/stones.png"
-    <*> (return $ SDLTexture t (V2 windowWidth windowHeight))
 
 loadTexture :: Renderer -> FilePath -> IO SDLTexture
 loadTexture r filePath = do
@@ -76,7 +74,6 @@ destroyTextures ts = do
   destroyTexture $ _getSDLTexture $ _soil ts
   destroyTexture $ _getSDLTexture $ _grass ts
   destroyTexture $ _getSDLTexture $ _stones ts
-  destroyTexture $ _getSDLTexture $ _gridTexture ts
 
 withSDL :: (MonadIO m) => m a -> m ()
 withSDL op = do
@@ -153,13 +150,9 @@ mkRect x y w h = Rectangle o z
 
 renderGrid :: (MonadIO m) => Renderer -> Textures -> [(SDLTexture, Point V2 CInt)] -> m ()
 renderGrid r t texturesAndPosition = do
-  let grid = _gridTexture t
   let soil = _soil t
-  rendererRenderTarget r $= Just (_getSDLTexture $ grid)
   renderTextureInPositions r (soil, (backgroundTexturesPositions 0 0)) -- render grid background
   forM_ (texturesAndPosition) (renderTextureInPosition r)
-  rendererRenderTarget r $= Nothing -- render window
-  Reflex.SDL2.copy r (_getSDLTexture $ grid) Nothing Nothing
   -- liftIO $ putStrLn $ "renderGrid end"
 
 renderTextureInPosition :: (MonadIO m) => Renderer -> (SDLTexture , Point V2 CInt) -> m ()
