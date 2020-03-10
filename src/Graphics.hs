@@ -49,7 +49,6 @@ data Textures = Textures {
 
 loadTextures :: Renderer -> IO Textures
 loadTextures r = do
-  t <- createTexture r RGBA8888 TextureAccessTarget (V2 windowWidth windowHeight)
   Textures
     <$> loadTexture r "assets/human_male.png"
     <*> loadTexture r "assets/human_female.png"
