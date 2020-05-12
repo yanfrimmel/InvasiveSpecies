@@ -1,12 +1,12 @@
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Graphics where
 
-import           Control.Monad          (void, forM_)
+import           Control.Monad          (forM_, void)
 import           Control.Monad.IO.Class (MonadIO)
 import           Data.Text
 import           Foreign.C.Types
-import           GHC.Word(Word32)
+import           GHC.Word               (Word32)
 import           Reflex.SDL2
 import qualified SDL.Font
 import qualified SDL.Image
@@ -31,30 +31,32 @@ maxFrames = 1000
 
 data TilesInScreen = TilesInScreen {
   _horizontalTilesNumber :: !Int,
-  _verticalTilesNumber :: !Int
+  _verticalTilesNumber   :: !Int
 }
 
 data SDLTexture = SDLTexture {
   _getSDLTexture :: !Texture,
-  _sizeT :: V2 CInt
+  _sizeT         :: V2 CInt
 } deriving (Eq)
 
 data Textures = Textures {
-  _humanM    :: !SDLTexture,
-  _humanF    :: !SDLTexture,
-  _soil    :: !SDLTexture,
-  _grass    :: !SDLTexture,
-  _stones     :: !SDLTexture
+  _humanM :: !SDLTexture,
+  _humanF :: !SDLTexture,
+  _soil   :: !SDLTexture,
+  _grass  :: !SDLTexture,
+  _stone  :: !SDLTexture,
+  _water  :: !SDLTexture
 } deriving (Eq)
 
 loadTextures :: Renderer -> IO Textures
-loadTextures r = do
+loadTextures r =
   Textures
     <$> loadTexture r "assets/human_male.png"
     <*> loadTexture r "assets/human_female.png"
     <*> loadTexture r "assets/soil.png"
     <*> loadTexture r "assets/grass.png"
-    <*> loadTexture r "assets/stones.png"
+    <*> loadTexture r "assets/stone.png"
+    <*> loadTexture r "assets/water.png"
 
 loadTexture :: Renderer -> FilePath -> IO SDLTexture
 loadTexture r filePath = do
@@ -72,7 +74,8 @@ destroyTextures ts = do
   destroyTexture $ _getSDLTexture $ _humanF ts
   destroyTexture $ _getSDLTexture $ _soil ts
   destroyTexture $ _getSDLTexture $ _grass ts
-  destroyTexture $ _getSDLTexture $ _stones ts
+  destroyTexture $ _getSDLTexture $ _stone ts
+  destroyTexture $ _getSDLTexture $ _water ts
 
 withSDL :: (MonadIO m) => m a -> m ()
 withSDL op = do
@@ -148,18 +151,19 @@ mkRect x y w h = Rectangle o z
     z = V2 w h
 
 renderGrid :: (MonadIO m) => Renderer -> Textures -> [(SDLTexture, Point V2 CInt)] -> m ()
-renderGrid r t texturesAndPosition = do
+renderGrid r t texturesAndPositions = do
   let soil = _soil t
-  renderTextureInPositions r (soil, (backgroundTexturesPositions 0 0)) -- render grid background
-  forM_ (texturesAndPosition) (renderTextureInPosition r)
+  -- renderTextureInPositions r (soil, backgroundTexturesPositions 0 0) -- render grid background
+  rendererDrawColor r $= V4 130 72 38 255
+  forM_ texturesAndPositions (renderTextureInPosition r)
   -- liftIO $ putStrLn $ "renderGrid end"
 
 renderTextureInPosition :: (MonadIO m) => Renderer -> (SDLTexture , Point V2 CInt) -> m ()
-renderTextureInPosition r (t,postion) = do
+renderTextureInPosition r (t,postion) =
   liftIO $ renderTexture r t postion
 
 renderTextureInPositions :: (MonadIO m) => Renderer -> (SDLTexture , [Point V2 CInt]) -> m ()
-renderTextureInPositions r (t,postions) = do
+renderTextureInPositions r (t,postions) =
   liftIO $ forM_ postions (renderTexture r t)
 
 backgroundTexturesPositions :: CInt -> CInt -> [Point V2 CInt]
@@ -174,7 +178,7 @@ renderTexture r (SDLTexture t size) xy =
 
 renderSolidText :: MonadIO m => Renderer -> SDL.Font.Font ->
   SDL.Font.Color -> String -> Int -> Int -> m ()
-renderSolidText r font = do
+renderSolidText r font =
   renderText r font (SDL.Font.solid font)
 
 renderText :: MonadIO m => Renderer -> SDL.Font.Font ->

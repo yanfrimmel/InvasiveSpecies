@@ -1,6 +1,5 @@
 {-# LANGUAGE BlockArguments        #-}
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -15,9 +14,9 @@ import Graphics
 import Reflex.SDL2
 
 main :: IO ()
-main = do
+main =
  withSDL $ withSDLImage $ withSDLFont $
   withWindow "InvasiveSpecies" $ \world -> 
    withRenderer world $ \renderer ->
     withTextures renderer $ \(rendererTextures, textures) ->
-      host $ runReaderT app $ (rendererTextures, textures)
+      host $ runReaderT app (rendererTextures, textures)

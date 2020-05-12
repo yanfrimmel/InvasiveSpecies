@@ -1,6 +1,5 @@
 {-# LANGUAGE BlockArguments        #-}
 {-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -9,31 +8,31 @@
 
 module Game where
 
-import Control.Concurrent   ()
-import Control.Monad        ()
-import Control.Monad.Reader (MonadReader (..))
-import Foreign.C.Types
-import Graphics
-import Input
-import Reflex
-import Reflex.SDL2
-import Time
+import           Control.Concurrent   ()
+import           Control.Monad        ()
+import           Control.Monad.Reader (MonadReader (..))
+import           Foreign.C.Types
+import           Graphics
+import           Input
+import           Reflex
+import           Reflex.SDL2
+import           Time
 
 -- | A type representing one layer in our app.
 type Layer m = Performable m ()
 
 -- _gameObjectsView extracted from _gameObjects
 data GameState = GameState {
-  _camera :: !(Point V2 CInt),
-  _player :: !GameObject,
+  _camera      :: !(Point V2 CInt),
+  _player      :: !GameObject,
   _gameObjects :: [GameObject]
 } deriving (Eq)
 
 data GameObject = GameObject {
-  _id :: !Int,
-  _speed :: Int,
+  _id       :: !Int,
+  _speed    :: Int,
   _position :: !(Point V2 CInt),
-  _texture :: !SDLTexture
+  _texture  :: !SDLTexture
 } deriving (Eq)
 ----------------------------------------------------------------------
 -- | Commit a layer stack that changes over time.
@@ -66,39 +65,39 @@ game = do
   deltaDyn <- holdDyn (createTime 0) (ffilter _nextFrame (updated gameTimeDyn))   -- Filter out non-game ticks
   deltaCountDyn <- count $ updated deltaDyn  -- Count when delta fires and compare at different times to calculate fps
   fpsDyn <- createTickOnceASecondDynamic deltaCountDyn -- Tick once a second to calculate FPS
-  performEvent_ $ fmap (fpsPrint) (updated fpsDyn) -- Print a message every frame tick
+  performEvent_ $ fmap fpsPrint (updated fpsDyn) -- Print a message every frame tick
   renderGameGrid deltaCountDyn fpsDyn
 
 createGameFrameTimeDynamic :: (ReflexSDL2 t m) => m (Dynamic t Time)
 createGameFrameTimeDynamic = do
   tickEvent <- getDeltaTickEvent
   limitDyn <- holdDyn maxFrames never
-  unfTimeDyn <- foldDyn updateTime (createTime maxFrames) (attachPromptlyDyn limitDyn tickEvent)
-  return unfTimeDyn
+  foldDyn updateTime (createTime maxFrames) (attachPromptlyDyn limitDyn tickEvent)
 
 createTickOnceASecondDynamic :: (ReflexSDL2 t m) =>  Dynamic t Integer -> m (Dynamic t Integer)
 createTickOnceASecondDynamic deltaCount = do
   secondCount <- tickLossyFromPostBuildTime 1
-  deltaStore <- foldDyn (\a (b,_)->(a,b)) (0,0) $ tagPromptlyDyn deltaCount secondCount
-  fpsDyn <- holdDyn 0 $ uncurry (-) <$> updated deltaStore
-  return fpsDyn
+  deltaStore <- foldDyn (\ a (b, _) -> (a, b)) (0, 0) $
+                  tagPromptlyDyn deltaCount secondCount
+  holdDyn 0 $ uncurry (-) <$> updated deltaStore
 
-inputEventHandler :: Inputs -> GameState -> GameState  --TODO handle world camera
+inputEventHandler :: Inputs -> GameState -> GameState
 inputEventHandler i g =
-  if (isLeftButtonDown $ fst $ _mouseInput i) && distanceBetweenPoints > proximityThreshold
+  if isLeftButtonDown (fst $ _mouseInput i) &&
+    distanceBetweenPoints > proximityThreshold
     then
       updatePlayerPosition (fromPointDoubleToPointCInt $ P newPositon) g
   else
     g
   where
-    mouseWorldPos = (getMousePosition $ snd $ _mouseInput i) ^+^ (_camera g)
+    mouseWorldPos = getMousePosition (snd $ _mouseInput i) ^+^ _camera g
     speed = _speed (_player g)
     currPos = _position (_player g)
     elapsed = 1 / fromIntegral (_currentFPS i)
-    direction = normalize $ (fromPointCIntToVectorDouble mouseWorldPos) ^-^ (fromPointCIntToVectorDouble currPos)
-    newPositon = (fromPointCIntToVectorDouble currPos) ^+^ (direction ^* (fromIntegral speed * elapsed))
+    direction = normalize $ fromPointCIntToVectorDouble mouseWorldPos ^-^ fromPointCIntToVectorDouble currPos
+    newPositon = fromPointCIntToVectorDouble currPos ^+^ (direction ^* (fromIntegral speed * elapsed))
     distanceBetweenPoints = distance (fromPointCIntToVectorDouble currPos) (fromPointCIntToVectorDouble mouseWorldPos)
-    proximityThreshold = (fromIntegral textureDimensions) / 8
+    proximityThreshold = fromIntegral textureDimensions / 8
 
 renderGameGrid :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => Dynamic t Integer -> Dynamic t Integer -> m ()
 renderGameGrid deltaCountDyn fpsDyn = do
@@ -112,7 +111,20 @@ renderGameGrid deltaCountDyn fpsDyn = do
   mouseMotionDyn <- holdDyn defaultMouseMotion =<< getMouseMotionEvent
   let mouseInputDyn = zipDyn mouseClickDyn mouseMotionDyn
 
-  let initialGameState = GameState {_camera = initialCameraPosition, _player = GameObject {_id = 1, _speed = 500, _texture =  _humanM textures, _position = initialPlayerPosition }, _gameObjects = [GameObject {_id = 2, _speed = 0, _texture = _humanF textures, _position = (P(V2 1000 1000))}]}
+  let initialGameState = GameState {
+      _camera = initialCameraPosition,
+      _player = GameObject {
+          _id = 1,
+          _speed = 500,
+          _texture =  _humanM textures,
+          _position = initialPlayerPosition
+                           },
+      _gameObjects = [GameObject{
+                                 _id = 2,
+                                 _speed = 0,
+                                 _texture = _humanF textures,_position = P (V2 5100 5100)
+                                }
+                     ]}
   -- let initialInput = Inputs {_currentFPS = 1, _mouseInput = (defaultMouseButton, defaultMouseMotion) }
   let gameInputsDyn = zipDynWith putMouseAndFpsEventIntoInputs fpsDyn mouseInputDyn
   let inputUpdateEvent = tagPromptlyDyn gameInputsDyn (updated deltaCountDyn)
@@ -120,7 +132,7 @@ renderGameGrid deltaCountDyn fpsDyn = do
 
   commitLayer $ ffor deltaCountDyn $ \_ -> do
     newState <- sample $ current gameStateDyn
-    printMessage $ printPoint $ _position $ _player newState
+    -- printMessage $ printPoint $ _position $ _player newState
     -- printMessage $ "deltaCount: " ++ show deltaCount
     renderGrid r textures (createGameStateView newState)
 
@@ -150,19 +162,17 @@ printMouseClick :: MonadIO m => MouseButtonEventData -> m ()
 printMouseClick m = printMessage $ "new position: " ++ show (getMouseButtonClickPosition m)
 
 printMessage :: MonadIO m => String -> m ()
-printMessage m = liftIO $ putStrLn $ m
+printMessage m = liftIO $ putStrLn m
 
 printPoint :: Point V2 CInt -> String
 printPoint position = "printPoint: " ++ show position
 
 updatePlayerPosition :: Point V2 CInt -> GameState -> GameState
 updatePlayerPosition p s =
-  (s  { _player = (_player s)  {
-            _position = newPosition
-        },
-        _camera = newPosition - P (V2 (div windowWidth 2) (div windowHeight 2))
-      }
-  )
+  s{  _player = (_player s){_position = newPosition},
+      _camera =
+      newPosition - P (V2 (div windowWidth 2) (div windowHeight 2))
+   }
     where
       newPosition = calcPlayerPosition p
 
@@ -181,13 +191,13 @@ createGameStateView s = createGameObjectsView (_camera s) (_player s : _gameObje
 
 createGameObjectsView :: Point V2 CInt -> [GameObject] -> [(SDLTexture, Point V2 CInt)]
 createGameObjectsView camera gameObjs =
-  transformGameObjectsPoisitionToFrame (filter (\textP -> (checkIfGameObjectInFrame camera textP)) fromGameObjsToTexturePoints)
+  transformGameObjectsPoisitionToFrame (filter (checkIfGameObjectInFrame camera) fromGameObjsToTexturePoints)
   where
-    fromGameObjsToTexturePoints = (map (\gameObj -> (_texture gameObj, (_position gameObj) )) gameObjs)
-    transformGameObjectsPoisitionToFrame = (map (\(t, p) -> (t, (p - camera))))
+    fromGameObjsToTexturePoints = map (\ gameObj -> (_texture gameObj, _position gameObj)) gameObjs
+    transformGameObjectsPoisitionToFrame = map (\ (t, p) -> (t, p - camera))
 
 checkIfGameObjectInFrame :: Point V2 CInt -> (SDLTexture, Point V2 CInt) -> Bool
-checkIfGameObjectInFrame (P (V2 x y)) (_, (P (V2 x2 y2)))
+checkIfGameObjectInFrame (P (V2 x y)) (_, P (V2 x2 y2))
  | x2 - x < 0           = False
  | y2 - y < 0           = False
  | x2 - x > worldWidth  = False

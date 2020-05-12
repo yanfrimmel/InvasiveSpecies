@@ -15,6 +15,7 @@ A 2d game written in Haskell with Reflex FRP and SDL2
 ## How to use
 
 ### Prerequisites
+
 This game uses SDL2, SDL_Image, and SDL_ttf, you need to have them installed in your system.
 
 ### To build
