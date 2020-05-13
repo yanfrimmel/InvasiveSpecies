@@ -8,8 +8,6 @@
 
 module Game where
 
-import           Control.Concurrent   ()
-import           Control.Monad        ()
 import           Control.Monad.Reader (MonadReader (..))
 import           Foreign.C.Types
 import           Graphics
@@ -25,12 +23,12 @@ type Layer m = Performable m ()
 data GameState = GameState {
   _camera      :: !(Point V2 CInt),
   _player      :: !GameObject,
-  _gameObjects :: [GameObject]
+  _gameObjects :: ![GameObject]
 } deriving (Eq)
 
 data GameObject = GameObject {
   _id       :: !Int,
-  _speed    :: Int,
+  _speed    :: !Int,
   _position :: !(Point V2 CInt),
   _texture  :: !SDLTexture
 } deriving (Eq)
@@ -134,7 +132,7 @@ renderGameGrid deltaCountDyn fpsDyn = do
     newState <- sample $ current gameStateDyn
     -- printMessage $ printPoint $ _position $ _player newState
     -- printMessage $ "deltaCount: " ++ show deltaCount
-    renderGrid r textures (createGameStateView newState)
+    renderGrid r $ createGameStateView newState
 
   showFPSOnScreenOnceASecond r fpsDyn
 

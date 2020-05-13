@@ -1,12 +1,12 @@
 module Time where
 
-import GHC.Word(Word32)
+import           GHC.Word (Word32)
 
-data Time = Time { 
-  _elapsed :: !Word32,
-  _frameLimit  :: !Word32,
-  _nextFrame   :: !Bool,
-  _postFrame   :: !Bool
+data Time = Time {
+  _elapsed    :: !Word32,
+  _frameLimit :: !Word32,
+  _nextFrame  :: !Bool,
+  _postFrame  :: !Bool
 } deriving (Eq, Show)
 
 -- Easy way to create a Time
@@ -27,7 +27,7 @@ updateTime (fLimt, delta) time =
             | _frameLimit time == 0 = 0
             | otherwise = round ((1000 :: Double) / fromIntegral (_frameLimit time))
           check
-            | limit <= 0 = (delta, True, True) -- no limit 
+            | limit <= 0 = (delta, True, True) -- no limit
             | _postFrame time = (mod newAccum limit, False, False)
             | newAccum > limit = (newAccum, True, True)
-            | otherwise = (newAccum, False, False)    
+            | otherwise = (newAccum, False, False)

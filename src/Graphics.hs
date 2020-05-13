@@ -36,7 +36,7 @@ data TilesInScreen = TilesInScreen {
 
 data SDLTexture = SDLTexture {
   _getSDLTexture :: !Texture,
-  _sizeT         :: V2 CInt
+  _sizeT         :: !(V2 CInt)
 } deriving (Eq)
 
 data Textures = Textures {
@@ -49,33 +49,29 @@ data Textures = Textures {
 } deriving (Eq)
 
 loadTextures :: Renderer -> IO Textures
-loadTextures r =
-  Textures
-    <$> loadTexture r "assets/human_male.png"
-    <*> loadTexture r "assets/human_female.png"
-    <*> loadTexture r "assets/soil.png"
-    <*> loadTexture r "assets/grass.png"
-    <*> loadTexture r "assets/stone.png"
-    <*> loadTexture r "assets/water.png"
+loadTextures r = do
+  humanMale <- loadTexture r "assets/human_male.png"
+  humanFemale <- loadTexture r "assets/human_female.png"
+  soil <- loadTexture r "assets/soil.png"
+  grass <- loadTexture r "assets/grass.png"
+  stone <- loadTexture r "assets/stone.png"
+  water <- loadTexture r "assets/water.png"
+  return $ Textures humanMale humanFemale soil grass stone water
 
 loadTexture :: Renderer -> FilePath -> IO SDLTexture
 loadTexture r filePath = do
-  surface <- SDL.Image.load filePath
-  size <- surfaceDimensions surface
-  let key = V4 0 maxBound maxBound maxBound
-  surfaceColorKey surface $= Just key
-  t <- createTextureFromSurface r surface
-  freeSurface surface
-  return $ SDLTexture t size
+  (texture, info) <- loadTextureWithInfo r filePath
+  let size = V2 (textureWidth info) (textureHeight info)
+  return $ SDLTexture texture size
 
 destroyTextures :: Textures -> IO ()
-destroyTextures ts = do
-  destroyTexture $ _getSDLTexture $ _humanM ts
-  destroyTexture $ _getSDLTexture $ _humanF ts
-  destroyTexture $ _getSDLTexture $ _soil ts
-  destroyTexture $ _getSDLTexture $ _grass ts
-  destroyTexture $ _getSDLTexture $ _stone ts
-  destroyTexture $ _getSDLTexture $ _water ts
+destroyTextures t = do
+  destroyTexture $ _getSDLTexture $ _humanM t
+  destroyTexture $ _getSDLTexture $ _humanF t
+  destroyTexture $ _getSDLTexture $ _soil t
+  destroyTexture $ _getSDLTexture $ _grass t
+  destroyTexture $ _getSDLTexture $ _stone t
+  destroyTexture $ _getSDLTexture $ _water t
 
 withSDL :: (MonadIO m) => m a -> m ()
 withSDL op = do
@@ -113,8 +109,9 @@ withWindow title op = do
 
 withRenderer :: (MonadIO m) => Window -> (Renderer -> m a) -> m ()
 withRenderer w op = do
-  r <- createRenderer w (-1) defaultRenderer
-  rendererDrawBlendMode r $= BlendAlphaBlend
+  r <- createRenderer w (-1) (RendererConfig AcceleratedRenderer True)
+  rendererDrawColor r $= V4 130 72 38 255
+  -- rendererDrawBlendMode r $= BlendAlphaBlend
   void $ op r
   destroyRenderer r
 
@@ -123,11 +120,6 @@ withTextures r op = do
     t <- liftIO $ loadTextures r
     void $ op (r, t)
     liftIO $ destroyTextures t
-
-renderSurfaceToWindow :: (MonadIO m) => Window -> Surface -> Surface -> m ()
-renderSurfaceToWindow w s i
-  = surfaceBlit i Nothing s Nothing
-  >> updateWindowSurface w
 
 loadTextureWithInfo :: (MonadIO m) => Renderer -> FilePath -> m (Texture, TextureInfo)
 loadTextureWithInfo r p = do
@@ -150,11 +142,10 @@ mkRect x y w h = Rectangle o z
     o = P (V2 x y)
     z = V2 w h
 
-renderGrid :: (MonadIO m) => Renderer -> Textures -> [(SDLTexture, Point V2 CInt)] -> m ()
-renderGrid r t texturesAndPositions = do
-  let soil = _soil t
+renderGrid :: (MonadIO m) => Renderer -> [(SDLTexture, Point V2 CInt)] -> m ()
+renderGrid r texturesAndPositions =
+  -- let soil = _soil t
   -- renderTextureInPositions r (soil, backgroundTexturesPositions 0 0) -- render grid background
-  rendererDrawColor r $= V4 130 72 38 255
   forM_ texturesAndPositions (renderTextureInPosition r)
   -- liftIO $ putStrLn $ "renderGrid end"
 
@@ -163,7 +154,7 @@ renderTextureInPosition r (t,postion) =
   liftIO $ renderTexture r t postion
 
 renderTextureInPositions :: (MonadIO m) => Renderer -> (SDLTexture , [Point V2 CInt]) -> m ()
-renderTextureInPositions r (t,postions) =
+renderTextureInPositions r (t, postions) =
   liftIO $ forM_ postions (renderTexture r t)
 
 backgroundTexturesPositions :: CInt -> CInt -> [Point V2 CInt]
