@@ -136,6 +136,15 @@ fromPointCIntToVectorDouble (P (V2 x y)) = V2 (fromIntegral x) (fromIntegral y)
 fromPointDoubleToPointCInt :: Point V2 Double -> Point V2 CInt
 fromPointDoubleToPointCInt (P (V2 x y)) = P $ V2 (round x) (round y)
 
+fromPointCIntToVectorCFloat :: Point V2 CInt -> V2 CFloat
+fromPointCIntToVectorCFloat (P (V2 x y)) = V2 (fromIntegral x) (fromIntegral y)
+
+fromPointToVector :: Point V2 a -> V2 a
+fromPointToVector (P (V2 x y)) = V2 x y
+
+fromPointCFloatToPointCInt :: Point V2 CFloat -> Point V2 CInt
+fromPointCFloatToPointCInt (P (V2 x y)) = P $ V2 (round x) (round y)
+
 mkRect :: a -> a -> a -> a-> Rectangle a
 mkRect x y w h = Rectangle o z
   where

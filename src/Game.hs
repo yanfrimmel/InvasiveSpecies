@@ -28,8 +28,8 @@ data GameState = GameState {
 
 data GameObject = GameObject {
   _id       :: !Int,
-  _speed    :: !Int,
-  _position :: !(Point V2 CInt),
+  _speed    :: !CFloat,
+  _position :: !(Point V2 CFloat),
   _texture  :: !SDLTexture
 } deriving (Eq)
 ----------------------------------------------------------------------
@@ -72,7 +72,7 @@ createGameFrameTimeDynamic = do
   limitDyn <- holdDyn maxFrames never
   foldDyn updateTime (createTime maxFrames) (attachPromptlyDyn limitDyn tickEvent)
 
-createTickOnceASecondDynamic :: (ReflexSDL2 t m) =>  Dynamic t Integer -> m (Dynamic t Integer)
+createTickOnceASecondDynamic :: (ReflexSDL2 t m) =>  Dynamic t Int -> m (Dynamic t Int)
 createTickOnceASecondDynamic deltaCount = do
   secondCount <- tickLossyFromPostBuildTime 1
   deltaStore <- foldDyn (\ a (b, _) -> (a, b)) (0, 0) $
@@ -84,7 +84,7 @@ inputEventHandler i g =
   if isLeftButtonDown (fst $ _mouseInput i) &&
     distanceBetweenPoints > proximityThreshold
     then
-      updatePlayerPosition (fromPointDoubleToPointCInt $ P newPositon) g
+      updatePlayerPosition (P newPositon) g
   else
     g
   where
@@ -92,12 +92,12 @@ inputEventHandler i g =
     speed = _speed (_player g)
     currPos = _position (_player g)
     elapsed = 1 / fromIntegral (_currentFPS i)
-    direction = normalize $ fromPointCIntToVectorDouble mouseWorldPos ^-^ fromPointCIntToVectorDouble currPos
-    newPositon = fromPointCIntToVectorDouble currPos ^+^ (direction ^* (fromIntegral speed * elapsed))
-    distanceBetweenPoints = distance (fromPointCIntToVectorDouble currPos) (fromPointCIntToVectorDouble mouseWorldPos)
+    direction = normalize $ fromPointCIntToVectorCFloat mouseWorldPos ^-^ fromPointToVector currPos
+    newPositon = fromPointToVector currPos ^+^ (direction ^* (speed * elapsed))
+    distanceBetweenPoints = distance (fromPointToVector currPos) (fromPointCIntToVectorCFloat mouseWorldPos)
     proximityThreshold = fromIntegral textureDimensions / 8
 
-renderGameGrid :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => Dynamic t Integer -> Dynamic t Integer -> m ()
+renderGameGrid :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => Dynamic t Int -> Dynamic t Int -> m ()
 renderGameGrid deltaCountDyn fpsDyn = do
   (r, textures) <- ask
   let defaultMouseButton = MouseButtonEventData Nothing Released (Mouse 0) ButtonRight 0 (P $ V2 0 0)
@@ -113,7 +113,7 @@ renderGameGrid deltaCountDyn fpsDyn = do
       _camera = initialCameraPosition,
       _player = GameObject {
           _id = 1,
-          _speed = 500,
+          _speed = 100,
           _texture =  _humanM textures,
           _position = initialPlayerPosition
                            },
@@ -130,29 +130,29 @@ renderGameGrid deltaCountDyn fpsDyn = do
 
   commitLayer $ ffor deltaCountDyn $ \_ -> do
     newState <- sample $ current gameStateDyn
-    -- printMessage $ printPoint $ _position $ _player newState
+    -- printMessage $ printPoint (_camera newState)
     -- printMessage $ "deltaCount: " ++ show deltaCount
     renderGrid r $ createGameStateView newState
 
   showFPSOnScreenOnceASecond r fpsDyn
 
-initialPlayerPosition :: Point V2 CInt
-initialPlayerPosition = P (V2 (div worldWidth 2) (div worldHeight 2))
+initialPlayerPosition :: Point V2 CFloat
+initialPlayerPosition = P $ fromPointCIntToVectorCFloat $ P (V2 (div worldWidth 2) (div worldHeight 2))
 
 initialCameraPosition :: Point V2 CInt
-initialCameraPosition = initialPlayerPosition ^-^ P (V2 (div windowWidth 2) (div windowHeight 2))
+initialCameraPosition = fromPointCFloatToPointCInt initialPlayerPosition ^-^ P (V2 (div windowWidth 2) (div windowHeight 2))
 
-putMouseAndFpsEventIntoInputs :: Integer -> (MouseButtonEventData, MouseMotionEventData) -> Inputs
+putMouseAndFpsEventIntoInputs :: Int -> (MouseButtonEventData, MouseMotionEventData) -> Inputs
 putMouseAndFpsEventIntoInputs fps m = Inputs{_currentFPS = fps, _mouseInput = m}
 
-showFPSOnScreenOnceASecond :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m) => Renderer -> Dynamic t Integer -> m ()
+showFPSOnScreenOnceASecond :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m) => Renderer -> Dynamic t Int -> m ()
 showFPSOnScreenOnceASecond r fpsDyn = do
   rf <- regularFont
   commitLayer $ ffor fpsDyn $ \a ->
     renderSolidText r rf (V4 255 255 0 255) ("FPS: " ++ show a) 0 0
 
 -- Function to just print something to the screen
-fpsPrint :: MonadIO m => Integer -> m ()
+fpsPrint :: MonadIO m => Int -> m ()
 fpsPrint fps = liftIO $ putStrLn $ "FPS: " ++ show fps
 
 -- Function to just print something to the screen
@@ -165,23 +165,22 @@ printMessage m = liftIO $ putStrLn m
 printPoint :: Point V2 CInt -> String
 printPoint position = "printPoint: " ++ show position
 
-updatePlayerPosition :: Point V2 CInt -> GameState -> GameState
+updatePlayerPosition :: Point V2 CFloat -> GameState -> GameState
 updatePlayerPosition p s =
   s{  _player = (_player s){_position = newPosition},
-      _camera =
-      newPosition - P (V2 (div windowWidth 2) (div windowHeight 2))
+      _camera = fromPointCFloatToPointCInt newPosition - P (V2 (div windowWidth 2) (div windowHeight 2))
    }
     where
       newPosition = calcPlayerPosition p
 
-calcPlayerPosition :: Point V2 CInt -> Point V2 CInt
+calcPlayerPosition :: Point V2 CFloat -> Point V2 CFloat
 calcPlayerPosition (P (V2 x y))
  | x < 0 && y < 0                    = P (V2 0 0)
  | x < 0                             = P (V2 0 y)
  | y < 0                             = P (V2 x 0)
- | x > worldWidth && y > worldHeight = P (V2 worldWidth worldHeight)
- | x > worldWidth                    = P (V2 worldWidth y)
- | y > worldHeight                   = P (V2 x worldHeight)
+ | x > fromIntegral worldWidth && y > fromIntegral worldHeight = P (V2 (fromIntegral worldWidth) (fromIntegral worldHeight))
+ | x > fromIntegral worldWidth                    = P (V2 (fromIntegral worldWidth) y)
+ | y > fromIntegral worldHeight                   = P (V2 x (fromIntegral worldHeight))
  | otherwise                         = P (V2 x y)
 
 createGameStateView :: GameState -> [(SDLTexture, Point V2 CInt)]
@@ -191,7 +190,7 @@ createGameObjectsView :: Point V2 CInt -> [GameObject] -> [(SDLTexture, Point V2
 createGameObjectsView camera gameObjs =
   transformGameObjectsPoisitionToFrame (filter (checkIfGameObjectInFrame camera) fromGameObjsToTexturePoints)
   where
-    fromGameObjsToTexturePoints = map (\ gameObj -> (_texture gameObj, _position gameObj)) gameObjs
+    fromGameObjsToTexturePoints = map (\ gameObj -> (_texture gameObj, fromPointCFloatToPointCInt $ _position gameObj )) gameObjs
     transformGameObjectsPoisitionToFrame = map (\ (t, p) -> (t, p - camera))
 
 checkIfGameObjectInFrame :: Point V2 CInt -> (SDLTexture, Point V2 CInt) -> Bool

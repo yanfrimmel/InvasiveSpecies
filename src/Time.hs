@@ -2,32 +2,31 @@ module Time where
 
 import           GHC.Word (Word32)
 
+second :: Float
+second  = 1000
+
 data Time = Time {
   _elapsed    :: !Word32,
   _frameLimit :: !Word32,
-  _nextFrame  :: !Bool,
-  _postFrame  :: !Bool
+  _nextFrame  :: !Bool -- check if its time to change frame
 } deriving (Eq, Show)
 
--- Easy way to create a Time
 createTime :: Word32 -> Time
-createTime limit = Time 0 limit True False
+createTime limit = Time 0 limit True
 
 -- Update the time with the time since previous frame
 updateTime :: (Word32, Word32) -> Time -> Time
 updateTime (fLimt, delta) time =
   time
-    { _elapsed = (\(a,_,_) -> a) check
+    { _elapsed    = fst check
     , _frameLimit = fLimt
-    , _nextFrame = (\(_,a,_) -> a) check
-    , _postFrame = (\(_,_,a)->a) check
+    , _nextFrame  = snd  check
     }
-    where newAccum = _elapsed time + delta
+    where newElapsed = _elapsed time + delta
           limit
             | _frameLimit time == 0 = 0
-            | otherwise = round ((1000 :: Double) / fromIntegral (_frameLimit time))
+            | otherwise = second / fromIntegral (_frameLimit time)
           check
-            | limit <= 0 = (delta, True, True) -- no limit
-            | _postFrame time = (mod newAccum limit, False, False)
-            | newAccum > limit = (newAccum, True, True)
-            | otherwise = (newAccum, False, False)
+            | limit <= 0       = (delta, True) -- no limit
+            | toRational newElapsed > toRational limit = (newElapsed, True)
+            | otherwise        = (newElapsed, False) -- filter out this frame from the game
