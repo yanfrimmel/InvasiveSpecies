@@ -8,7 +8,7 @@ second  = 1000
 data Time = Time {
   _elapsed    :: !Word32,
   _frameLimit :: !Word32,
-  _nextFrame  :: !Bool -- check if its time to change frame
+  _isGameFrame  :: !Bool -- check if its time to change frame
 } deriving (Eq, Show)
 
 createTime :: Word32 -> Time
@@ -20,7 +20,7 @@ updateTime (fLimt, delta) time =
   time
     { _elapsed    = fst check
     , _frameLimit = fLimt
-    , _nextFrame  = snd  check
+    , _isGameFrame  = snd  check
     }
     where newElapsed = _elapsed time + delta
           limit

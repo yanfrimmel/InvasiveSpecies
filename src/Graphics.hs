@@ -2,6 +2,7 @@
 
 module Graphics where
 
+import           Paths_InvasiveSpecies
 import           Control.Monad          (forM_, void)
 import           Control.Monad.IO.Class (MonadIO)
 import           Data.Text
@@ -59,7 +60,9 @@ loadTextures r = do
   return $ Textures humanMale humanFemale soil grass stone water
 
 loadTexture :: Renderer -> FilePath -> IO SDLTexture
-loadTexture r filePath = do
+loadTexture r fileName = do
+  filePath <- getDataFileName fileName
+  putStrLn filePath
   (texture, info) <- loadTextureWithInfo r filePath
   let size = V2 (textureWidth info) (textureHeight info)
   return $ SDLTexture texture size
@@ -130,12 +133,6 @@ loadTextureWithInfo r p = do
 mkPoint :: a -> a -> Point V2 a
 mkPoint x y = P (V2 x y)
 
-fromPointCIntToVectorDouble :: Point V2 CInt -> V2 Double
-fromPointCIntToVectorDouble (P (V2 x y)) = V2 (fromIntegral x) (fromIntegral y)
-
-fromPointDoubleToPointCInt :: Point V2 Double -> Point V2 CInt
-fromPointDoubleToPointCInt (P (V2 x y)) = P $ V2 (round x) (round y)
-
 fromPointCIntToVectorCFloat :: Point V2 CInt -> V2 CFloat
 fromPointCIntToVectorCFloat (P (V2 x y)) = V2 (fromIntegral x) (fromIntegral y)
 
@@ -153,10 +150,7 @@ mkRect x y w h = Rectangle o z
 
 renderGrid :: (MonadIO m) => Renderer -> [(SDLTexture, Point V2 CInt)] -> m ()
 renderGrid r texturesAndPositions =
-  -- let soil = _soil t
-  -- renderTextureInPositions r (soil, backgroundTexturesPositions 0 0) -- render grid background
   forM_ texturesAndPositions (renderTextureInPosition r)
-  -- liftIO $ putStrLn $ "renderGrid end"
 
 renderTextureInPosition :: (MonadIO m) => Renderer -> (SDLTexture , Point V2 CInt) -> m ()
 renderTextureInPosition r (t,postion) =
@@ -203,4 +197,6 @@ getFontFromFile path size = do
   SDL.Font.load path size
 
 regularFont :: MonadIO m => m SDL.Font.Font
-regularFont = getFontFromFile "assets/ObliviousFont.ttf" 20
+regularFont = do
+  filePath <- liftIO $ getDataFileName "assets/ObliviousFont.ttf"
+  getFontFromFile filePath 20

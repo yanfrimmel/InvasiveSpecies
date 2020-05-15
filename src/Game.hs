@@ -60,7 +60,7 @@ game :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [La
 game = do
   _ <- getPostBuild
   gameTimeDyn <- createGameFrameTimeDynamic -- set up time and limit values
-  deltaDyn <- holdDyn (createTime 0) (ffilter _nextFrame (updated gameTimeDyn))   -- Filter out non-game ticks
+  deltaDyn <- holdDyn (createTime 0) (ffilter _isGameFrame (updated gameTimeDyn))   -- Filter out non-game ticks
   deltaCountDyn <- count $ updated deltaDyn  -- Count when delta fires and compare at different times to calculate fps
   fpsDyn <- createTickOnceASecondDynamic deltaCountDyn -- Tick once a second to calculate FPS
   performEvent_ $ fmap fpsPrint (updated fpsDyn) -- Print a message every frame tick
@@ -103,9 +103,7 @@ renderGameGrid deltaCountDyn fpsDyn = do
   let defaultMouseButton = MouseButtonEventData Nothing Released (Mouse 0) ButtonRight 0 (P $ V2 0 0)
   let defaultMouseMotion = MouseMotionEventData Nothing (Mouse 0) [] (P $ V2 0 0) (V2 0 0)
   mouseClickDyn <- holdDyn defaultMouseButton =<< getMouseButtonEvent
-
   -- performEvent_ $ fmap (printMouseClick) (updated mouseClickDyn)
-
   mouseMotionDyn <- holdDyn defaultMouseMotion =<< getMouseMotionEvent
   let mouseInputDyn = zipDyn mouseClickDyn mouseMotionDyn
 
@@ -123,15 +121,13 @@ renderGameGrid deltaCountDyn fpsDyn = do
                                  _texture = _humanF textures,_position = P (V2 5100 5100)
                                 }
                      ]}
-  -- let initialInput = Inputs {_currentFPS = 1, _mouseInput = (defaultMouseButton, defaultMouseMotion) }
   let gameInputsDyn = zipDynWith putMouseAndFpsEventIntoInputs fpsDyn mouseInputDyn
   let inputUpdateEvent = tagPromptlyDyn gameInputsDyn (updated deltaCountDyn)
   gameStateDyn <- foldDyn inputEventHandler initialGameState inputUpdateEvent
 
   commitLayer $ ffor deltaCountDyn $ \_ -> do
     newState <- sample $ current gameStateDyn
-    -- printMessage $ printPoint (_camera newState)
-    -- printMessage $ "deltaCount: " ++ show deltaCount
+    printMessage $ "Player pos: " ++ (show $ _position $ _player newState)
     renderGrid r $ createGameStateView newState
 
   showFPSOnScreenOnceASecond r fpsDyn
@@ -161,9 +157,6 @@ printMouseClick m = printMessage $ "new position: " ++ show (getMouseButtonClick
 
 printMessage :: MonadIO m => String -> m ()
 printMessage m = liftIO $ putStrLn m
-
-printPoint :: Point V2 CInt -> String
-printPoint position = "printPoint: " ++ show position
 
 updatePlayerPosition :: Point V2 CFloat -> GameState -> GameState
 updatePlayerPosition p s =

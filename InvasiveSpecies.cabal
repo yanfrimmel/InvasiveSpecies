@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9b4bfc3bd83417d660dc2db3b992b89ce77e8145f8de120e889aa78b2fde0c59
+-- hash: 8aec079caa33ce76dd836afa256366b65bf95bf16d65f002454b1c25ea193a68
 
 name:           InvasiveSpecies
 version:        0.1.0.0
@@ -19,6 +19,7 @@ license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
+data-dir:       assets
 
 source-repository head
   type: git
@@ -50,7 +51,7 @@ executable InvasiveSpecies-exe
       Paths_InvasiveSpecies
   hs-source-dirs:
       app
-  ghc-options: -O2 -Wall -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       InvasiveSpecies
     , base >=4.7 && <5
