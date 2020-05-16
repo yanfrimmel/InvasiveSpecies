@@ -3,11 +3,6 @@ module Input where
 import           Foreign.C.Types
 import           Reflex.SDL2
 
-data Inputs = Inputs {
-  _currentFPS :: !Int,
-  _mouseInput :: !(MouseButtonEventData, MouseMotionEventData) -- todo add more inputs - such as AI or mouse events
-} deriving (Eq, Show)
-
 getMouseButtonClickPosition :: MouseButtonEventData -> Point V2 CInt
 getMouseButtonClickPosition dat = pos
   where P pos32 = mouseButtonEventPos dat

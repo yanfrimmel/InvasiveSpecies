@@ -1,6 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Graphics where
+module Graphics (withSDL, withSDLImage, withSDLFont, withWindow, 
+withRenderer, withTextures, renderGrid, renderSolidText, windowWidth, 
+windowHeight, textureDimensions, maxFrames, regularFont) where
 
 import           Paths_InvasiveSpecies
 import           Control.Monad          (forM_, void)
@@ -11,6 +13,7 @@ import           GHC.Word               (Word32)
 import           Reflex.SDL2
 import qualified SDL.Font
 import qualified SDL.Image
+import           Types
 
 windowWidth :: CInt
 windowWidth = 800
@@ -18,36 +21,11 @@ windowWidth = 800
 windowHeight :: CInt
 windowHeight = 600
 
-worldWidth :: CInt
-worldWidth = 10000
-
-worldHeight :: CInt
-worldHeight = 10000
-
 textureDimensions :: CInt
 textureDimensions = 32
 
 maxFrames :: Word32
 maxFrames = 1000
-
-data TilesInScreen = TilesInScreen {
-  _horizontalTilesNumber :: !Int,
-  _verticalTilesNumber   :: !Int
-}
-
-data SDLTexture = SDLTexture {
-  _getSDLTexture :: !Texture,
-  _sizeT         :: !(V2 CInt)
-} deriving (Eq)
-
-data Textures = Textures {
-  _humanM :: !SDLTexture,
-  _humanF :: !SDLTexture,
-  _soil   :: !SDLTexture,
-  _grass  :: !SDLTexture,
-  _stone  :: !SDLTexture,
-  _water  :: !SDLTexture
-} deriving (Eq)
 
 loadTextures :: Renderer -> IO Textures
 loadTextures r = do
@@ -129,24 +107,6 @@ loadTextureWithInfo r p = do
   t <- SDL.Image.loadTexture r p
   i <- queryTexture t
   pure (t, i)
-
-mkPoint :: a -> a -> Point V2 a
-mkPoint x y = P (V2 x y)
-
-fromPointCIntToVectorCFloat :: Point V2 CInt -> V2 CFloat
-fromPointCIntToVectorCFloat (P (V2 x y)) = V2 (fromIntegral x) (fromIntegral y)
-
-fromPointToVector :: Point V2 a -> V2 a
-fromPointToVector (P (V2 x y)) = V2 x y
-
-fromPointCFloatToPointCInt :: Point V2 CFloat -> Point V2 CInt
-fromPointCFloatToPointCInt (P (V2 x y)) = P $ V2 (round x) (round y)
-
-mkRect :: a -> a -> a -> a-> Rectangle a
-mkRect x y w h = Rectangle o z
-  where
-    o = P (V2 x y)
-    z = V2 w h
 
 renderGrid :: (MonadIO m) => Renderer -> [(SDLTexture, Point V2 CInt)] -> m ()
 renderGrid r texturesAndPositions =

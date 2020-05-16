@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8aec079caa33ce76dd836afa256366b65bf95bf16d65f002454b1c25ea193a68
+-- hash: de7c316e181142afed2117f2405410a49bf7b1d4593471414413f986ab221494
 
 name:           InvasiveSpecies
 version:        0.1.0.0
@@ -31,6 +31,8 @@ library
       Graphics
       Input
       Time
+      Types
+      Utils
   other-modules:
       Paths_InvasiveSpecies
   hs-source-dirs:

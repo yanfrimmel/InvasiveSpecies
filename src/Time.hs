@@ -1,15 +1,10 @@
 module Time where
 
 import           GHC.Word (Word32)
+import           Types
 
 second :: Float
 second  = 1000
-
-data Time = Time {
-  _elapsed    :: !Word32,
-  _frameLimit :: !Word32,
-  _isGameFrame  :: !Bool -- check if its time to change frame
-} deriving (Eq, Show)
 
 createTime :: Word32 -> Time
 createTime limit = Time 0 limit True

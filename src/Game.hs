@@ -6,32 +6,26 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-module Game where
+module Game (app) where
 
-import           Control.Monad.Reader (MonadReader (..))
+import           Control.Monad.Reader (MonadReader (..), runReaderT)
 import           Foreign.C.Types
 import           Graphics
 import           Input
 import           Reflex
 import           Reflex.SDL2
 import           Time
+import           Types
+import           Utils
+
+worldWidth :: CInt
+worldWidth = 10000
+
+worldHeight :: CInt
+worldHeight = 10000
 
 -- | A type representing one layer in our app.
 type Layer m = Performable m ()
-
--- _gameObjectsView extracted from _gameObjects
-data GameState = GameState {
-  _camera      :: !(Point V2 CInt),
-  _player      :: !GameObject,
-  _gameObjects :: ![GameObject]
-} deriving (Eq)
-
-data GameObject = GameObject {
-  _id       :: !Int,
-  _speed    :: !CFloat,
-  _position :: !(Point V2 CFloat),
-  _texture  :: !SDLTexture
-} deriving (Eq)
 ----------------------------------------------------------------------
 -- | Commit a layer stack that changes over time.
 commitLayers :: (ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m)
@@ -44,17 +38,23 @@ commitLayer :: (ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m)
             => Dynamic t (Layer m) -> m ()
 commitLayer = tellDyn . fmap pure
 
-app :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadReader (Renderer, Textures) m) => m ()
-app = do
-  (r, _) <- ask
-  (_, dynLayers) <- runDynamicWriterT game
-  performEvent_ $ ffor (updated dynLayers) $ \layers -> do
-    clear r
-    sequence_ layers
-    present r
-  evQuit <- getQuitEvent
-  performEvent_ $ liftIO (putStrLn "bye!") <$ evQuit
-  shutdownOn =<< delay 0 evQuit
+app :: IO ()
+app = liftIO $ withSDL $ withSDLImage $ withSDLFont $
+    withWindow "InvasiveSpecies" $ \world -> 
+     withRenderer world $ \renderer ->
+      withTextures renderer $ \(r, t) ->
+       host $ runReaderT appReader (r, t) 
+       where 
+         appReader = do  
+          (r, _) <- ask
+          (_, dynLayers) <- runDynamicWriterT game
+          performEvent_ $ ffor (updated dynLayers) $ \layers -> do
+            clear r
+            sequence_ layers
+            present r
+          evQuit <- getQuitEvent
+          performEvent_ $ liftIO (putStrLn "bye!") <$ evQuit
+          shutdownOn =<< delay 0 evQuit
 
 game :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => m ()
 game = do
