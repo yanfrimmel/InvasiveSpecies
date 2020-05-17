@@ -40,12 +40,12 @@ commitLayer = tellDyn . fmap pure
 
 app :: IO ()
 app = liftIO $ withSDL $ withSDLImage $ withSDLFont $
-    withWindow "InvasiveSpecies" $ \world -> 
+    withWindow "InvasiveSpecies" $ \world ->
      withRenderer world $ \renderer ->
       withTextures renderer $ \(r, t) ->
-       host $ runReaderT appReader (r, t) 
-       where 
-         appReader = do  
+       host $ runReaderT appReader (r, t)
+       where
+         appReader = do
           (r, _) <- ask
           (_, dynLayers) <- runDynamicWriterT game
           performEvent_ $ ffor (updated dynLayers) $ \layers -> do
@@ -103,7 +103,7 @@ renderGameGrid deltaCountDyn fpsDyn = do
   let defaultMouseButton = MouseButtonEventData Nothing Released (Mouse 0) ButtonRight 0 (P $ V2 0 0)
   let defaultMouseMotion = MouseMotionEventData Nothing (Mouse 0) [] (P $ V2 0 0) (V2 0 0)
   mouseClickDyn <- holdDyn defaultMouseButton =<< getMouseButtonEvent
-  -- performEvent_ $ fmap (printMouseClick) (updated mouseClickDyn)
+  performEvent_ $ fmap printMouseClick (updated mouseClickDyn)
   mouseMotionDyn <- holdDyn defaultMouseMotion =<< getMouseMotionEvent
   let mouseInputDyn = zipDyn mouseClickDyn mouseMotionDyn
 
@@ -111,23 +111,25 @@ renderGameGrid deltaCountDyn fpsDyn = do
       _camera = initialCameraPosition,
       _player = GameObject {
           _id = 1,
-          _speed = 100,
+          _speed = 200,
           _texture =  _humanM textures,
-          _position = initialPlayerPosition
-                           },
+          _position = initialPlayerPosition,
+          _type = Player
+      },
       _gameObjects = [GameObject{
                                  _id = 2,
                                  _speed = 0,
-                                 _texture = _humanF textures,_position = P (V2 5100 5100)
-                                }
-                     ]}
+                                 _texture = _humanF textures,_position = P (V2 5100 5100),
+                                 _type = initialHumanFemale
+                      }]
+      }
   let gameInputsDyn = zipDynWith putMouseAndFpsEventIntoInputs fpsDyn mouseInputDyn
   let inputUpdateEvent = tagPromptlyDyn gameInputsDyn (updated deltaCountDyn)
   gameStateDyn <- foldDyn inputEventHandler initialGameState inputUpdateEvent
 
   commitLayer $ ffor deltaCountDyn $ \_ -> do
     newState <- sample $ current gameStateDyn
-    printMessage $ "Player pos: " ++ (show $ _position $ _player newState)
+    -- printMessage $ "Player" ++ show (_player newState)
     renderGrid r $ createGameStateView newState
 
   showFPSOnScreenOnceASecond r fpsDyn
@@ -147,11 +149,9 @@ showFPSOnScreenOnceASecond r fpsDyn = do
   commitLayer $ ffor fpsDyn $ \a ->
     renderSolidText r rf (V4 255 255 0 255) ("FPS: " ++ show a) 0 0
 
--- Function to just print something to the screen
 fpsPrint :: MonadIO m => Int -> m ()
-fpsPrint fps = liftIO $ putStrLn $ "FPS: " ++ show fps
+fpsPrint fps = printMessage $ "FPS: " ++ show fps
 
--- Function to just print something to the screen
 printMouseClick :: MonadIO m => MouseButtonEventData -> m ()
 printMouseClick m = printMessage $ "new position: " ++ show (getMouseButtonClickPosition m)
 
@@ -168,13 +168,13 @@ updatePlayerPosition p s =
 
 calcPlayerPosition :: Point V2 CFloat -> Point V2 CFloat
 calcPlayerPosition (P (V2 x y))
- | x < 0 && y < 0                    = P (V2 0 0)
- | x < 0                             = P (V2 0 y)
- | y < 0                             = P (V2 x 0)
- | x > fromIntegral worldWidth && y > fromIntegral worldHeight = P (V2 (fromIntegral worldWidth) (fromIntegral worldHeight))
- | x > fromIntegral worldWidth                    = P (V2 (fromIntegral worldWidth) y)
- | y > fromIntegral worldHeight                   = P (V2 x (fromIntegral worldHeight))
- | otherwise                         = P (V2 x y)
+  | x < 0 && y < 0                    = P (V2 0 0)
+  | x < 0                             = P (V2 0 y)
+  | y < 0                             = P (V2 x 0)
+  | x > fromIntegral worldWidth && y > fromIntegral worldHeight = P (V2 (fromIntegral worldWidth) (fromIntegral worldHeight))
+  | x > fromIntegral worldWidth                    = P (V2 (fromIntegral worldWidth) y)
+  | y > fromIntegral worldHeight                   = P (V2 x (fromIntegral worldHeight))
+  | otherwise                         = P (V2 x y)
 
 createGameStateView :: GameState -> [(SDLTexture, Point V2 CInt)]
 createGameStateView s = createGameObjectsView (_camera s) (_player s : _gameObjects s)
@@ -188,8 +188,8 @@ createGameObjectsView camera gameObjs =
 
 checkIfGameObjectInFrame :: Point V2 CInt -> (SDLTexture, Point V2 CInt) -> Bool
 checkIfGameObjectInFrame (P (V2 x y)) (_, P (V2 x2 y2))
- | x2 - x < 0           = False
- | y2 - y < 0           = False
- | x2 - x > worldWidth  = False
- | y2 - y > worldHeight = False
- | otherwise            = True
+  | x2 - x < 0           = False
+  | y2 - y < 0           = False
+  | x2 - x > worldWidth  = False
+  | y2 - y > worldHeight = False
+  | otherwise            = True

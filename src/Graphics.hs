@@ -43,7 +43,7 @@ loadTexture r fileName = do
   putStrLn filePath
   (texture, info) <- loadTextureWithInfo r filePath
   let size = V2 (textureWidth info) (textureHeight info)
-  return $ SDLTexture texture size
+  return $ SDLTexture filePath texture size
 
 destroyTextures :: Textures -> IO ()
 destroyTextures t = do
@@ -127,7 +127,7 @@ backgroundTexturesPositions x y
   | otherwise        = P (V2 x y) : backgroundTexturesPositions (x+textureDimensions) y
 
 renderTexture :: Renderer -> SDLTexture -> Point V2 CInt -> IO ()
-renderTexture r (SDLTexture t size) xy =
+renderTexture r (SDLTexture _ t size) xy =
   Reflex.SDL2.copy r t Nothing (Just $ Rectangle xy size)
 
 renderSolidText :: MonadIO m => Renderer -> SDL.Font.Font ->

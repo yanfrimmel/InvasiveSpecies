@@ -20,3 +20,4 @@ InvasiveSpecies.sublime-workspace
 *.hp
 *.aux
 .DS_Store
+.stylish-haskell.yaml
