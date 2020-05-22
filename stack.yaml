@@ -43,6 +43,7 @@ extra-deps:
  - these-0.7.6
  - QuickCheck-2.12.6.1
  - StateVar-1.1.1.1
+ - mersenne-random-1.0.0.1
 
 # - constraints-extras-0.3.0.1
 # - dependent-map-0.3

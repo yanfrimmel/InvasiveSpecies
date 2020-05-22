@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: de7c316e181142afed2117f2405410a49bf7b1d4593471414413f986ab221494
+-- hash: 77d6f3eed3f1875c2b5c55299695dbd2d843c86839b1f063cd407c7da5893d72
 
 name:           InvasiveSpecies
 version:        0.1.0.0
@@ -19,7 +19,16 @@ license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
-data-dir:       assets
+data-files:
+    assets/chicken_female.png
+    assets/chicken_male.png
+    assets/grass.png
+    assets/human_female.png
+    assets/human_male.png
+    assets/ObliviousFont.ttf
+    assets/soil.png
+    assets/stone.png
+    assets/water.png
 
 source-repository head
   type: git
@@ -39,7 +48,9 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , fclabels
     , mtl
+    , random
     , reflex >=0.5 && <0.6
     , reflex-sdl2
     , sdl2-image
@@ -57,7 +68,9 @@ executable InvasiveSpecies-exe
   build-depends:
       InvasiveSpecies
     , base >=4.7 && <5
+    , fclabels
     , mtl
+    , random
     , reflex >=0.5 && <0.6
     , reflex-sdl2
     , sdl2-image
@@ -76,7 +89,9 @@ test-suite InvasiveSpecies-test
   build-depends:
       InvasiveSpecies
     , base >=4.7 && <5
+    , fclabels
     , mtl
+    , random
     , reflex >=0.5 && <0.6
     , reflex-sdl2
     , sdl2-image

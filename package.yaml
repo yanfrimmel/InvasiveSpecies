@@ -19,11 +19,13 @@ dependencies:
 - sdl2-image
 - sdl2-ttf
 - text
+- fclabels
+- random
 
 library:
   source-dirs: src
   
-data-dir: assets
+data-files: assets/**
 
 executables:
   InvasiveSpecies-exe:

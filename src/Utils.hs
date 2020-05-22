@@ -11,4 +11,3 @@ fromPointToVector (P (V2 x y)) = V2 x y
 
 fromPointCFloatToPointCInt :: Point V2 CFloat -> Point V2 CInt
 fromPointCFloatToPointCInt (P (V2 x y)) = P $ V2 (round x) (round y)
-

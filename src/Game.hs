@@ -1,19 +1,25 @@
 {-# LANGUAGE BlockArguments        #-}
+{-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
 module Game (app) where
 
+import           Control.Category
 import           Control.Monad.Reader (MonadReader (..), runReaderT)
 import           Foreign.C.Types
 import           Graphics
 import           Input
+import           Prelude              hiding (id, (.))
 import           Reflex
 import           Reflex.SDL2
+import           System.Random
 import           Time
 import           Types
 import           Utils
@@ -28,9 +34,9 @@ worldHeight = 10000
 type Layer m = Performable m ()
 ----------------------------------------------------------------------
 -- | Commit a layer stack that changes over time.
-commitLayers :: (ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m)
-      => Dynamic t [Layer m] -> m ()
-commitLayers = tellDyn
+-- commitLayers :: (ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m)
+--       => Dynamic t [Layer m] -> m ()
+-- commitLayers = tellDyn
 
 ----------------------------------------------------------------------
 -- | Commit one layer that changes over time.
@@ -56,7 +62,9 @@ app = liftIO $ withSDL $ withSDLImage $ withSDLFont $
           performEvent_ $ liftIO (putStrLn "bye!") <$ evQuit
           shutdownOn =<< delay 0 evQuit
 
-game :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => m ()
+type ReflexSDLMonadsContainer t m = (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m)
+
+game :: (ReflexSDLMonadsContainer t m, MonadReader (Renderer, Textures) m) => m ()
 game = do
   _ <- getPostBuild
   gameTimeDyn <- createGameFrameTimeDynamic -- set up time and limit values
@@ -79,25 +87,7 @@ createTickOnceASecondDynamic deltaCount = do
                   tagPromptlyDyn deltaCount secondCount
   holdDyn 0 $ uncurry (-) <$> updated deltaStore
 
-inputEventHandler :: Inputs -> GameState -> GameState
-inputEventHandler i g =
-  if isLeftButtonDown (fst $ _mouseInput i) &&
-    distanceBetweenPoints > proximityThreshold
-    then
-      updatePlayerPosition (P newPositon) g
-  else
-    g
-  where
-    mouseWorldPos = getMousePosition (snd $ _mouseInput i) ^+^ _camera g
-    speed = _speed (_player g)
-    currPos = _position (_player g)
-    elapsed = 1 / fromIntegral (_currentFPS i)
-    direction = normalize $ fromPointCIntToVectorCFloat mouseWorldPos ^-^ fromPointToVector currPos
-    newPositon = fromPointToVector currPos ^+^ (direction ^* (speed * elapsed))
-    distanceBetweenPoints = distance (fromPointToVector currPos) (fromPointCIntToVectorCFloat mouseWorldPos)
-    proximityThreshold = fromIntegral textureDimensions / 8
-
-renderGameGrid :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m, MonadReader (Renderer, Textures) m) => Dynamic t Int -> Dynamic t Int -> m ()
+renderGameGrid :: (ReflexSDLMonadsContainer t m , MonadReader (Renderer, Textures) m) => Dynamic t Int -> Dynamic t Int -> m ()
 renderGameGrid deltaCountDyn fpsDyn = do
   (r, textures) <- ask
   let defaultMouseButton = MouseButtonEventData Nothing Released (Mouse 0) ButtonRight 0 (P $ V2 0 0)
@@ -114,18 +104,19 @@ renderGameGrid deltaCountDyn fpsDyn = do
           _speed = 200,
           _texture =  _humanM textures,
           _position = initialPlayerPosition,
-          _type = Player
+          _gameObjectType = Player
       },
       _gameObjects = [GameObject{
                                  _id = 2,
                                  _speed = 0,
                                  _texture = _humanF textures,_position = P (V2 5100 5100),
-                                 _type = initialHumanFemale
+                                 _gameObjectType = initialHumanFemale
                       }]
       }
-  let gameInputsDyn = zipDynWith putMouseAndFpsEventIntoInputs fpsDyn mouseInputDyn
+  let gameInputsDyn = zipDynWith putMouseAndFpsEventIntoInput fpsDyn mouseInputDyn
   let inputUpdateEvent = tagPromptlyDyn gameInputsDyn (updated deltaCountDyn)
   gameStateDyn <- foldDyn inputEventHandler initialGameState inputUpdateEvent
+  -- let gameObjectsInputDyn = foldDyn updateGameObjects 0 (return [GameObject]) (updated gameStateDyn)
 
   commitLayer $ ffor deltaCountDyn $ \_ -> do
     newState <- sample $ current gameStateDyn
@@ -134,16 +125,36 @@ renderGameGrid deltaCountDyn fpsDyn = do
 
   showFPSOnScreenOnceASecond r fpsDyn
 
+inputEventHandler :: Input -> GameState -> GameState
+inputEventHandler i g =
+  if isLeftButtonDown (fst $ _mouseInput i) &&
+    distanceBetweenPoints > proximityThreshold
+    then
+      updatePlayerPosition (P newPositon) g
+  else if isInfinite delta -- TODO: better solution for first second FPS better
+    then g    
+  else
+    updateGameObjects (mkStdGen 0) delta g -- TODO: put another value into generator
+  where
+    mouseWorldPos = getMousePosition (snd $ _mouseInput i) ^+^ _camera g
+    pspeed = _speed (_player g)
+    currPos = _position (_player g)
+    delta = 1 / fromIntegral (_currentFPS i) :: CFloat
+    direction = normalize $ fromPointCIntToVectorCFloat mouseWorldPos ^-^ fromPointToVector currPos
+    newPositon = fromPointToVector currPos ^+^ (direction ^* (pspeed * delta))
+    distanceBetweenPoints = distance (fromPointToVector currPos) (fromPointCIntToVectorCFloat mouseWorldPos)
+    proximityThreshold = fromIntegral textureDimensions / 8
+
 initialPlayerPosition :: Point V2 CFloat
 initialPlayerPosition = P $ fromPointCIntToVectorCFloat $ P (V2 (div worldWidth 2) (div worldHeight 2))
 
 initialCameraPosition :: Point V2 CInt
 initialCameraPosition = fromPointCFloatToPointCInt initialPlayerPosition ^-^ P (V2 (div windowWidth 2) (div windowHeight 2))
 
-putMouseAndFpsEventIntoInputs :: Int -> (MouseButtonEventData, MouseMotionEventData) -> Inputs
-putMouseAndFpsEventIntoInputs fps m = Inputs{_currentFPS = fps, _mouseInput = m}
+putMouseAndFpsEventIntoInput :: Int -> (MouseButtonEventData, MouseMotionEventData) -> Input
+putMouseAndFpsEventIntoInput fps m = Input{ _currentFPS = fps, _mouseInput = m }
 
-showFPSOnScreenOnceASecond :: (MonadSample t (Performable m), ReflexSDL2 t m, MonadDynamicWriter t [Layer m] m) => Renderer -> Dynamic t Int -> m ()
+showFPSOnScreenOnceASecond :: ReflexSDLMonadsContainer t m => Renderer -> Dynamic t Int -> m ()
 showFPSOnScreenOnceASecond r fpsDyn = do
   rf <- regularFont
   commitLayer $ ffor fpsDyn $ \a ->
@@ -180,12 +191,11 @@ createGameStateView :: GameState -> [(SDLTexture, Point V2 CInt)]
 createGameStateView s = createGameObjectsView (_camera s) (_player s : _gameObjects s)
 
 createGameObjectsView :: Point V2 CInt -> [GameObject] -> [(SDLTexture, Point V2 CInt)]
-createGameObjectsView camera gameObjs =
-  transformGameObjectsPoisitionToFrame (filter (checkIfGameObjectInFrame camera) fromGameObjsToTexturePoints)
+createGameObjectsView c gameObjs =
+  transformGameObjectsPoisitionToFrame (filter (checkIfGameObjectInFrame c) fromGameObjsToTexturePoints)
   where
     fromGameObjsToTexturePoints = map (\ gameObj -> (_texture gameObj, fromPointCFloatToPointCInt $ _position gameObj )) gameObjs
-    transformGameObjectsPoisitionToFrame = map (\ (t, p) -> (t, p - camera))
-
+    transformGameObjectsPoisitionToFrame = map (\ (t, p) -> (t, p - c))
 checkIfGameObjectInFrame :: Point V2 CInt -> (SDLTexture, Point V2 CInt) -> Bool
 checkIfGameObjectInFrame (P (V2 x y)) (_, P (V2 x2 y2))
   | x2 - x < 0           = False

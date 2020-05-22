@@ -60,6 +60,13 @@ packages:
       sha256: d2b673886d4d8866aecb9b7f32ec6719fa9a8f8d2ccccea059edc3c45db4e1f0
   original:
     hackage: StateVar-1.1.1.1
+- completed:
+    hackage: mersenne-random-1.0.0.1@sha256:c2c7c88765030e4a6003e921e7676858a048f75bc2f38d58ddafd3b102be6d82,3637
+    pantry-tree:
+      size: 1770
+      sha256: 087123b35bf7a9f5dd0e8cf39625afc3daea60e3b2ede73a0fbc471e3d2a82a3
+  original:
+    hackage: mersenne-random-1.0.0.1
 snapshots:
 - completed:
     size: 524104

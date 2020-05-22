@@ -1,15 +1,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Graphics (withSDL, withSDLImage, withSDLFont, withWindow, 
-withRenderer, withTextures, renderGrid, renderSolidText, windowWidth, 
+module Graphics (withSDL, withSDLImage, withSDLFont, withWindow,
+withRenderer, withTextures, renderGrid, renderSolidText, windowWidth,
 windowHeight, textureDimensions, maxFrames, regularFont) where
 
-import           Paths_InvasiveSpecies
 import           Control.Monad          (forM_, void)
 import           Control.Monad.IO.Class (MonadIO)
 import           Data.Text
 import           Foreign.C.Types
 import           GHC.Word               (Word32)
+import           Paths_InvasiveSpecies
 import           Reflex.SDL2
 import qualified SDL.Font
 import qualified SDL.Image
@@ -41,9 +41,9 @@ loadTexture :: Renderer -> FilePath -> IO SDLTexture
 loadTexture r fileName = do
   filePath <- getDataFileName fileName
   putStrLn filePath
-  (texture, info) <- loadTextureWithInfo r filePath
+  (t, info) <- loadTextureWithInfo r filePath
   let size = V2 (textureWidth info) (textureHeight info)
-  return $ SDLTexture filePath texture size
+  return $ SDLTexture filePath t size
 
 destroyTextures :: Textures -> IO ()
 destroyTextures t = do
@@ -116,16 +116,6 @@ renderTextureInPosition :: (MonadIO m) => Renderer -> (SDLTexture , Point V2 CIn
 renderTextureInPosition r (t,postion) =
   liftIO $ renderTexture r t postion
 
-renderTextureInPositions :: (MonadIO m) => Renderer -> (SDLTexture , [Point V2 CInt]) -> m ()
-renderTextureInPositions r (t, postions) =
-  liftIO $ forM_ postions (renderTexture r t)
-
-backgroundTexturesPositions :: CInt -> CInt -> [Point V2 CInt]
-backgroundTexturesPositions x y
-  | y > windowHeight = []
-  | x > windowWidth  = P (V2 0 y) : backgroundTexturesPositions 0 (y+textureDimensions)
-  | otherwise        = P (V2 x y) : backgroundTexturesPositions (x+textureDimensions) y
-
 renderTexture :: Renderer -> SDLTexture -> Point V2 CInt -> IO ()
 renderTexture r (SDLTexture _ t size) xy =
   Reflex.SDL2.copy r t Nothing (Just $ Rectangle xy size)
@@ -141,14 +131,14 @@ renderText :: MonadIO m => Renderer -> SDL.Font.Font ->
 renderText r font fColor c str x y = do
     let text = Data.Text.pack str
     surface <- fColor c text
-    texture <- Reflex.SDL2.createTextureFromSurface r surface
+    t <- Reflex.SDL2.createTextureFromSurface r surface
     Reflex.SDL2.freeSurface surface
     size <- SDL.Font.size font text
     let (w, h) = size
         x' :: CInt = fromIntegral x
         y' :: CInt = fromIntegral y
-    Reflex.SDL2.copy r texture Nothing (Just (Rectangle (P $ V2 x' y') (V2 (fromIntegral w) (fromIntegral h))))
-    Reflex.SDL2.destroyTexture texture
+    Reflex.SDL2.copy r t Nothing (Just (Rectangle (P $ V2 x' y') (V2 (fromIntegral w) (fromIntegral h))))
+    Reflex.SDL2.destroyTexture t
 
  -- Load a font from a file
 getFontFromFile :: MonadIO m => FilePath -> Int -> m SDL.Font.Font
