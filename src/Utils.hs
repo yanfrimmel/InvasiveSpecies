@@ -6,6 +6,9 @@ import           Reflex.SDL2
 fromPointCIntToVectorCFloat :: Point V2 CInt -> V2 CFloat
 fromPointCIntToVectorCFloat (P (V2 x y)) = V2 (fromIntegral x) (fromIntegral y)
 
+fromPointCIntToPointCFloat :: Point V2 CInt -> Point V2 CFloat
+fromPointCIntToPointCFloat (P (V2 x y)) = P $ V2 (fromIntegral x) (fromIntegral y)
+
 fromPointToVector :: Point V2 a -> V2 a
 fromPointToVector (P (V2 x y)) = V2 x y
 

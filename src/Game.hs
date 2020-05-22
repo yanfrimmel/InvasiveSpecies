@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE BlockArguments        #-}
 {-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -23,6 +24,7 @@ import           System.Random
 import           Time
 import           Types
 import           Utils
+import           Data.Label as L
 
 worldWidth :: CInt
 worldWidth = 10000
@@ -127,23 +129,29 @@ renderGameGrid deltaCountDyn fpsDyn = do
 
 inputEventHandler :: Input -> GameState -> GameState
 inputEventHandler i g =
-  if isLeftButtonDown (fst $ _mouseInput i) &&
-    distanceBetweenPoints > proximityThreshold
+  if isLeftButtonDown (fst $ _mouseInput i)
     then
-      updatePlayerPosition (P newPositon) g
+      updatePlayerPosition (updateAnimalPosition delta (fromPointCIntToPointCFloat mouseWorldPos) (_player g)) g
   else if isInfinite delta -- TODO: better solution for first second FPS better
     then g    
   else
     updateGameObjects (mkStdGen 0) delta g -- TODO: put another value into generator
   where
     mouseWorldPos = getMousePosition (snd $ _mouseInput i) ^+^ _camera g
-    pspeed = _speed (_player g)
-    currPos = _position (_player g)
     delta = 1 / fromIntegral (_currentFPS i) :: CFloat
-    direction = normalize $ fromPointCIntToVectorCFloat mouseWorldPos ^-^ fromPointToVector currPos
-    newPositon = fromPointToVector currPos ^+^ (direction ^* (pspeed * delta))
-    distanceBetweenPoints = distance (fromPointToVector currPos) (fromPointCIntToVectorCFloat mouseWorldPos)
-    proximityThreshold = fromIntegral textureDimensions / 8
+
+updateAnimalPosition :: CFloat -> Point V2 CFloat -> GameObject -> GameObject
+updateAnimalPosition delta target a = 
+  if distanceBetweenPoints > proximityThreshold 
+    then L.set position (P newPosition) a
+  else a
+  where 
+    s = _speed a
+    currPos = _position a
+    direction = normalize $ fromPointToVector target ^-^ fromPointToVector currPos
+    newPosition = fromPointToVector currPos ^+^ (direction ^* (s * delta))
+    distanceBetweenPoints = distance (fromPointToVector currPos) (fromPointToVector target)
+    proximityThreshold = fromIntegral textureDimensions / 8 
 
 initialPlayerPosition :: Point V2 CFloat
 initialPlayerPosition = P $ fromPointCIntToVectorCFloat $ P (V2 (div worldWidth 2) (div worldHeight 2))
@@ -169,13 +177,13 @@ printMouseClick m = printMessage $ "new position: " ++ show (getMouseButtonClick
 printMessage :: MonadIO m => String -> m ()
 printMessage m = liftIO $ putStrLn m
 
-updatePlayerPosition :: Point V2 CFloat -> GameState -> GameState
+updatePlayerPosition :: GameObject -> GameState -> GameState
 updatePlayerPosition p s =
-  s{  _player = (_player s){_position = newPosition},
+  s{  _player = p,
       _camera = fromPointCFloatToPointCInt newPosition - P (V2 (div windowWidth 2) (div windowHeight 2))
    }
     where
-      newPosition = calcPlayerPosition p
+      newPosition = calcPlayerPosition (_position p)
 
 calcPlayerPosition :: Point V2 CFloat -> Point V2 CFloat
 calcPlayerPosition (P (V2 x y))
@@ -191,15 +199,8 @@ createGameStateView :: GameState -> [(SDLTexture, Point V2 CInt)]
 createGameStateView s = createGameObjectsView (_camera s) (_player s : _gameObjects s)
 
 createGameObjectsView :: Point V2 CInt -> [GameObject] -> [(SDLTexture, Point V2 CInt)]
-createGameObjectsView c gameObjs =
-  transformGameObjectsPoisitionToFrame (filter (checkIfGameObjectInFrame c) fromGameObjsToTexturePoints)
+createGameObjectsView cam gameObjs =
+  transformGameObjectsPoisitionToFrame (filter (checkIfTextureInFrame cam) fromGameObjsToTexturePoints)
   where
     fromGameObjsToTexturePoints = map (\ gameObj -> (_texture gameObj, fromPointCFloatToPointCInt $ _position gameObj )) gameObjs
-    transformGameObjectsPoisitionToFrame = map (\ (t, p) -> (t, p - c))
-checkIfGameObjectInFrame :: Point V2 CInt -> (SDLTexture, Point V2 CInt) -> Bool
-checkIfGameObjectInFrame (P (V2 x y)) (_, P (V2 x2 y2))
-  | x2 - x < 0           = False
-  | y2 - y < 0           = False
-  | x2 - x > worldWidth  = False
-  | y2 - y > worldHeight = False
-  | otherwise            = True
+    transformGameObjectsPoisitionToFrame = map (\ (t, p) -> (t, p - cam))

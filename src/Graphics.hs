@@ -2,7 +2,7 @@
 
 module Graphics (withSDL, withSDLImage, withSDLFont, withWindow,
 withRenderer, withTextures, renderGrid, renderSolidText, windowWidth,
-windowHeight, textureDimensions, maxFrames, regularFont) where
+windowHeight, textureDimensions, maxFrames, regularFont, checkIfTextureInFrame) where
 
 import           Control.Monad          (forM_, void)
 import           Control.Monad.IO.Class (MonadIO)
@@ -91,10 +91,11 @@ withWindow title op = do
 withRenderer :: (MonadIO m) => Window -> (Renderer -> m a) -> m ()
 withRenderer w op = do
   r <- createRenderer w (-1) (RendererConfig AcceleratedRenderer True)
-  rendererDrawColor r $= V4 130 72 38 255
+  rendererDrawColor r $= backgroundColor
   -- rendererDrawBlendMode r $= BlendAlphaBlend
   void $ op r
   destroyRenderer r
+  where backgroundColor = V4 130 72 38 255
 
 withTextures :: (MonadIO m) => Renderer -> ((Renderer, Textures) -> m a) -> m ()
 withTextures r op = do
@@ -150,3 +151,11 @@ regularFont :: MonadIO m => m SDL.Font.Font
 regularFont = do
   filePath <- liftIO $ getDataFileName "assets/ObliviousFont.ttf"
   getFontFromFile filePath 20
+
+checkIfTextureInFrame :: Point V2 CInt -> (SDLTexture, Point V2 CInt) -> Bool
+checkIfTextureInFrame (P (V2 x y)) (SDLTexture _ _ (V2 xt yt), P (V2 x2 y2))
+  | x2 + xt < x                = False
+  | y2 + yt < y                = False
+  | x2 - xt > x + windowWidth  = False
+  | y2 - yt > y + windowHeight = False
+  | otherwise                  = True
