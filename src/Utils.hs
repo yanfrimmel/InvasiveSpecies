@@ -14,3 +14,18 @@ fromPointToVector (P (V2 x y)) = V2 x y
 
 fromPointCFloatToPointCInt :: Point V2 CFloat -> Point V2 CInt
 fromPointCFloatToPointCInt (P (V2 x y)) = P $ V2 (round x) (round y)
+
+xFromPoint :: (Num a ) => Point V2 a -> a
+xFromPoint (P v) = xFromV2 v
+
+yFromPoint :: (Num a ) => Point V2 a -> a
+yFromPoint (P v) = yFromV2 v
+
+xFromV2 :: (Num a ) => V2 a -> a
+xFromV2 (V2 x _) = x
+
+yFromV2 :: (Num a ) => V2 a -> a
+yFromV2 (V2 _ y) = y
+
+composeSame :: (a -> b -> a) -> (a -> b -> a) -> a -> b -> a
+composeSame g f x y = g (f x y) y

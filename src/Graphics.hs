@@ -2,7 +2,7 @@
 
 module Graphics (withSDL, withSDLImage, withSDLFont, withWindow,
 withRenderer, withTextures, renderGrid, renderSolidText, windowWidth,
-windowHeight, textureDimensions, maxFrames, regularFont, checkIfTextureInFrame) where
+windowHeight, maxFrames, regularFont, checkIfTextureInFrame) where
 
 import           Control.Monad          (forM_, void)
 import           Control.Monad.IO.Class (MonadIO)
@@ -21,9 +21,6 @@ windowWidth = 800
 windowHeight :: CInt
 windowHeight = 600
 
-textureDimensions :: CInt
-textureDimensions = 32
-
 maxFrames :: Word32
 maxFrames = 1000
 
@@ -39,11 +36,11 @@ loadTextures r = do
 
 loadTexture :: Renderer -> FilePath -> IO SDLTexture
 loadTexture r fileName = do
-  filePath <- getDataFileName fileName
-  putStrLn filePath
-  (t, info) <- loadTextureWithInfo r filePath
+  path <- getDataFileName fileName
+  putStrLn path
+  (t, info) <- loadTextureWithInfo r path
   let size = V2 (textureWidth info) (textureHeight info)
-  return $ SDLTexture filePath t size
+  return $ SDLTexture path t size
 
 destroyTextures :: Textures -> IO ()
 destroyTextures t = do
@@ -149,8 +146,8 @@ getFontFromFile path size = do
 
 regularFont :: MonadIO m => m SDL.Font.Font
 regularFont = do
-  filePath <- liftIO $ getDataFileName "assets/ObliviousFont.ttf"
-  getFontFromFile filePath 20
+  path <- liftIO $ getDataFileName "assets/ObliviousFont.ttf"
+  getFontFromFile path 20
 
 checkIfTextureInFrame :: Point V2 CInt -> (SDLTexture, Point V2 CInt) -> Bool
 checkIfTextureInFrame (P (V2 x y)) (SDLTexture _ _ (V2 xt yt), P (V2 x2 y2))

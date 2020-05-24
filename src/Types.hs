@@ -6,6 +6,7 @@ import           Data.Label
 import           Foreign.C.Types
 import           GHC.Word        (Word32)
 import           Reflex.SDL2
+import           System.Random
 
 ------- Graphics -------------
 data SDLTexture = SDLTexture {
@@ -43,14 +44,16 @@ data Time = Time {
 data GameState = GameState {
   _camera      :: !(Point V2 CInt),
   _player      :: !(GameObject),
-  _gameObjects :: ![GameObject]
-} deriving (Eq, Show)
+  _gameObjects :: ![GameObject],
+  _randomGene  :: !StdGen
+} deriving (Show)
 
 data GameObject = GameObject {
   _id             :: !Int,
   _speed          :: !CFloat,
   _position       :: !(Point V2 CFloat),
   _texture        :: !SDLTexture,
+  _destination    :: !(Maybe (Point V2 CFloat)),
   _gameObjectType :: !GameObjectType
 } deriving (Eq, Show)
 
@@ -86,7 +89,8 @@ data Gender = Male
             deriving (Eq, Show)
 
 initialHumanMale :: GameObjectType
-initialHumanMale = AnimalTag Animal { _gender = Male,
+initialHumanMale = AnimalTag Animal {
+                            _gender = Male,
                             _age = 0,
                             _hp = 100,
                             _hydration = 100,
@@ -97,7 +101,8 @@ initialHumanMale = AnimalTag Animal { _gender = Male,
                             _MAX_NUTRITION = 100 }
 
 initialHumanFemale :: GameObjectType
-initialHumanFemale = AnimalTag Animal { _gender = Female { _numberOfFetuses = 0,
+initialHumanFemale = AnimalTag Animal {
+                              _gender = Female { _numberOfFetuses = 0,
                                                  _pregnancyStartTime = 0,
                                                  _MAX_MULTIPLE_FETUSES = 2,
                                                  _PREGNANCY_TIME = 10},
@@ -114,4 +119,4 @@ data RangeCFloat = RangeCFloat { _start :: CFloat,
                                  _size  :: CFloat
                                } deriving (Eq, Show)
 
-mkLabels [''GameState, ''GameObject, ''Animal, ''Gender, ''Time, ''Input]
+mkLabels [''GameState, ''GameObject, ''Animal, ''Gender, ''Time, ''Input, ''SDLTexture]

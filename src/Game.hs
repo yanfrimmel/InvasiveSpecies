@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE BlockArguments        #-}
 {-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -24,7 +23,6 @@ import           System.Random
 import           Time
 import           Types
 import           Utils
-import           Data.Label as L
 
 worldWidth :: CInt
 worldWidth = 10000
@@ -100,20 +98,23 @@ renderGameGrid deltaCountDyn fpsDyn = do
   let mouseInputDyn = zipDyn mouseClickDyn mouseMotionDyn
 
   let initialGameState = GameState {
-      _camera = initialCameraPosition,
-      _player = GameObject {
-          _id = 1,
-          _speed = 200,
-          _texture =  _humanM textures,
-          _position = initialPlayerPosition,
-          _gameObjectType = Player
-      },
-      _gameObjects = [GameObject{
-                                 _id = 2,
-                                 _speed = 0,
-                                 _texture = _humanF textures,_position = P (V2 5100 5100),
-                                 _gameObjectType = initialHumanFemale
-                      }]
+       _camera = initialCameraPosition,
+       _player = GameObject {
+           _id = 1,
+           _speed = 200,
+           _texture =  _humanM textures,
+           _position = initialPlayerPosition,
+           _destination = Nothing,
+           _gameObjectType = Player
+       },
+       _gameObjects = [GameObject{
+                                  _id = 2,
+                                  _speed = 100,
+                                  _texture = _humanF textures,_position = P (V2 5100 5100),
+                                  _destination = Just (P (V2 5000 5000)),
+                                  _gameObjectType = initialHumanFemale
+                       }],
+       _randomGene = mkStdGen 0 -- TODO use time as input
       }
   let gameInputsDyn = zipDynWith putMouseAndFpsEventIntoInput fpsDyn mouseInputDyn
   let inputUpdateEvent = tagPromptlyDyn gameInputsDyn (updated deltaCountDyn)
@@ -129,29 +130,15 @@ renderGameGrid deltaCountDyn fpsDyn = do
 
 inputEventHandler :: Input -> GameState -> GameState
 inputEventHandler i g =
-  if isLeftButtonDown (fst $ _mouseInput i)
-    then
-      updatePlayerPosition (updateAnimalPosition delta (fromPointCIntToPointCFloat mouseWorldPos) (_player g)) g
-  else if isInfinite delta -- TODO: better solution for first second FPS better
-    then g    
+  if isInfinite delta -- TODO: better solution for first second FPS better
+    then g
+  else if isLeftButtonDown (fst $ _mouseInput i)
+    then updatePlayerPosition (moveToDestination delta (fromPointCIntToPointCFloat mouseWorldPos) (_player g)) g
   else
-    updateGameObjects (mkStdGen 0) delta g -- TODO: put another value into generator
+    updateGameObjects delta g -- TODO: put another value into generator
   where
     mouseWorldPos = getMousePosition (snd $ _mouseInput i) ^+^ _camera g
     delta = 1 / fromIntegral (_currentFPS i) :: CFloat
-
-updateAnimalPosition :: CFloat -> Point V2 CFloat -> GameObject -> GameObject
-updateAnimalPosition delta target a = 
-  if distanceBetweenPoints > proximityThreshold 
-    then L.set position (P newPosition) a
-  else a
-  where 
-    s = _speed a
-    currPos = _position a
-    direction = normalize $ fromPointToVector target ^-^ fromPointToVector currPos
-    newPosition = fromPointToVector currPos ^+^ (direction ^* (s * delta))
-    distanceBetweenPoints = distance (fromPointToVector currPos) (fromPointToVector target)
-    proximityThreshold = fromIntegral textureDimensions / 8 
 
 initialPlayerPosition :: Point V2 CFloat
 initialPlayerPosition = P $ fromPointCIntToVectorCFloat $ P (V2 (div worldWidth 2) (div worldHeight 2))
