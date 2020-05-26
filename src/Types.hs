@@ -41,6 +41,12 @@ data Time = Time {
 } deriving (Eq, Show)
 
 ------- Game ------------------
+worldWidth :: CInt
+worldWidth = 10000
+
+worldHeight :: CInt
+worldHeight = 10000
+
 data GameState = GameState {
   _camera      :: !(Point V2 CInt),
   _player      :: !(GameObject),
@@ -69,6 +75,13 @@ instance Eq GameObjectType where
     AnimalTag _ == AnimalTag _ = True
     _ == _ = False
 
+getAnimalFromObject :: GameObject -> Maybe Animal
+getAnimalFromObject o =
+  case _gameObjectType o of
+    AnimalTag a -> Just a
+    _           ->  Nothing
+
+
 data Animal = Animal {
   _gender        :: !Gender,
   _age           :: !CFloat, -- for timing actions
@@ -77,8 +90,8 @@ data Animal = Animal {
   _nutrition     :: !CFloat,
   _sight         :: !CFloat,
   _MAX_HP        :: !CFloat,
-  _MAX_HYDRATION :: !CFloat,
-  _MAX_NUTRITION :: !CFloat
+  _max_hydration :: !CFloat,
+  _max_nutrition :: !CFloat
 } deriving (Eq, Show)
 
 data Gender = Male
@@ -97,8 +110,8 @@ initialHumanMale = AnimalTag Animal {
                             _nutrition = 100,
                             _sight = 300,
                             _MAX_HP = 100,
-                            _MAX_HYDRATION= 100,
-                            _MAX_NUTRITION = 100 }
+                            _max_hydration= 100,
+                            _max_nutrition = 100 }
 
 initialHumanFemale :: GameObjectType
 initialHumanFemale = AnimalTag Animal {
@@ -112,8 +125,8 @@ initialHumanFemale = AnimalTag Animal {
                               _nutrition = 100,
                               _sight = 300,
                               _MAX_HP = 100,
-                              _MAX_HYDRATION= 100,
-                              _MAX_NUTRITION = 100 }
+                              _max_hydration= 100,
+                              _max_nutrition = 100 }
 
 data RangeCFloat = RangeCFloat { _start :: CFloat,
                                  _size  :: CFloat

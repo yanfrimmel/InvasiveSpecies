@@ -24,12 +24,6 @@ import           Time
 import           Types
 import           Utils
 
-worldWidth :: CInt
-worldWidth = 10000
-
-worldHeight :: CInt
-worldHeight = 10000
-
 -- | A type representing one layer in our app.
 type Layer m = Performable m ()
 ----------------------------------------------------------------------
@@ -110,7 +104,16 @@ renderGameGrid deltaCountDyn fpsDyn = do
        _gameObjects = [GameObject{
                                   _id = 2,
                                   _speed = 100,
-                                  _texture = _humanF textures,_position = P (V2 5100 5100),
+                                  _texture = _humanF textures,
+                                  _position = P (V2 5100 5100),
+                                  _destination = Just (P (V2 5000 5000)),
+                                  _gameObjectType = initialHumanFemale
+                       },
+                      GameObject{
+                                  _id = 3,
+                                  _speed = 100,
+                                  _texture = _humanF textures,
+                                  _position = P (V2 5150 5100),
                                   _destination = Just (P (V2 5000 5000)),
                                   _gameObjectType = initialHumanFemale
                        }],
