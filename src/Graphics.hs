@@ -16,13 +16,13 @@ import qualified SDL.Image
 import           Types
 
 windowWidth :: CInt
-windowWidth = 800
+windowWidth = 1000
 
 windowHeight :: CInt
-windowHeight = 600
+windowHeight = 1000
 
 maxFrames :: Word32
-maxFrames = 1000
+maxFrames = 900
 
 loadTextures :: Renderer -> IO Textures
 loadTextures r = do

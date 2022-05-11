@@ -72,7 +72,7 @@ createGameFrameTimeDynamic :: (ReflexSDL2 t m) => m (Dynamic t Time)
 createGameFrameTimeDynamic = do
   tickEvent <- getDeltaTickEvent
   limitDyn <- holdDyn maxFrames never
-  foldDyn updateTime (createTime maxFrames) (attachPromptlyDyn limitDyn tickEvent)
+  foldDyn updateTime (createTime 0) (attachPromptlyDyn limitDyn tickEvent)
 
 createTickOnceASecondDynamic :: (ReflexSDL2 t m) =>  Dynamic t Int -> m (Dynamic t Int)
 createTickOnceASecondDynamic deltaCount = do

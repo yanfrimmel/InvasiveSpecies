@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 77d6f3eed3f1875c2b5c55299695dbd2d843c86839b1f063cd407c7da5893d72
+-- hash: 694ecbcf8610ba3d71a25bed1a3cea7397840f1bcfc94eb7f31934f9a4b92140
 
 name:           InvasiveSpecies
 version:        0.1.0.0
@@ -49,9 +49,10 @@ library
   build-depends:
       base >=4.7 && <5
     , fclabels
+    , hspec
     , mtl
     , random
-    , reflex >=0.5 && <0.6
+    , reflex ==0.5.*
     , reflex-sdl2
     , sdl2-image
     , sdl2-ttf
@@ -69,9 +70,10 @@ executable InvasiveSpecies-exe
       InvasiveSpecies
     , base >=4.7 && <5
     , fclabels
+    , hspec
     , mtl
     , random
-    , reflex >=0.5 && <0.6
+    , reflex ==0.5.*
     , reflex-sdl2
     , sdl2-image
     , sdl2-ttf
@@ -90,9 +92,10 @@ test-suite InvasiveSpecies-test
       InvasiveSpecies
     , base >=4.7 && <5
     , fclabels
+    , hspec
     , mtl
     , random
-    , reflex >=0.5 && <0.6
+    , reflex ==0.5.*
     , reflex-sdl2
     , sdl2-image
     , sdl2-ttf

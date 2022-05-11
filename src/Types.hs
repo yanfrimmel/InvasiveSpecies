@@ -36,7 +36,7 @@ data Input = Input {
 ------- Time ------------------
 data Time = Time {
   _elapsed     :: !Word32,
-  _frameLimit  :: !Word32,
+  _lastFrame  :: !Word32,
   _isGameFrame :: !Bool -- check if its time to change frame
 } deriving (Eq, Show)
 
