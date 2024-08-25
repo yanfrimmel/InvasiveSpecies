@@ -1,6 +1,6 @@
 # InvasiveSpecies
 
-A 2d game written in Haskell with Reflex FRP and SDL2 
+A 2d game POC written in Haskell with Reflex FRP and SDL2 
 
 ![Example with open terminal](Example.png)
 
