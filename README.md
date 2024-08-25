@@ -10,7 +10,6 @@ A 2d game POC written in Haskell with Reflex FRP and SDL2
 * Player avatar follows mouse press.
 * Frames per seconds counter.
 * Camera that follows the player in world coordinates
-* Will be continued...
 
 ## How to use
 
